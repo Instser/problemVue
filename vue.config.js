@@ -10,5 +10,17 @@ module.exports = defineConfig({
         }
       }
     }
+  },
+  devServer:{
+    // 配置代理
+    proxy:{
+      '/api':{
+        target:'http://localhost:8888',
+        changeOrigin:true, // 是否允许跨域请求
+        pathRewrite: {
+          '^/api': ''
+        }
+      }
+    }
   }
 })

@@ -15,8 +15,6 @@ import CommonHeader from "@/components/commonHeader.vue";
           <common-header :name="$route.name"/>
         </el-header>
         <el-main>
-          <!-- 路由出口 -->
-          <!--路由匹配到的组件将渲染在这里 -->
           <router-view></router-view>
         </el-main>
       </el-container>
@@ -25,5 +23,10 @@ import CommonHeader from "@/components/commonHeader.vue";
 </template>
 
 <style scoped>
-
+.el-header {
+  padding: 0;
+}
+.el-main {
+  padding: 0;
+}
 </style>

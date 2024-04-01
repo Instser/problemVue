@@ -14,6 +14,11 @@ export default {
 }
 </script>
 
-<style>
-
+<style lang="less">
+html,body,h3 {
+  margin: 0;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 400;
+}
 </style>
