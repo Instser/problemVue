@@ -13,7 +13,7 @@
       <el-form-item>
         <el-button type="primary" @click="login">登录</el-button>
       </el-form-item>
-      <img :src="decodePwd" alt="加载失败" />
+      <img :src="decodePwd" @click="getVcimg" alt="加载失败" />
     </el-form>
   </div>
 </template>
@@ -22,6 +22,9 @@
 import {ref, unref} from "vue";
 import router from "@/router/router";
 import axios from "axios";
+import {storage} from "@/storage/storage";
+import {ElNotification} from "element-plus";
+
 const formRef = ref(null)
 const loginForm = ref({
   username: '',
@@ -37,11 +40,6 @@ const login = () => {
   const form = unref(formRef)
   form.validate(valid => {
     if (valid) {
-      console.log(JSON.parse(JSON.stringify({
-        username: loginForm.value.username,
-        password: loginForm.value.password,
-        code: loginForm.value.code
-      })))
       axios.post('/api/doLogin', JSON.parse(JSON.stringify({
             username: loginForm.value.username,
             password: loginForm.value.password,
@@ -49,11 +47,24 @@ const login = () => {
           }))
       ).then(res => {
         console.log(res.data)
-        router.push('/login')
+        if (res.data.msg === '验证码不匹配!') {
+          ElNotification({
+            title: '验证码不正确',
+            type: 'warning'
+          })
+          getVcimg()
+        }
+        if (res.data.data === '登录成功') {
+          storage.set('isAuthenticated', true);
+          router.push('/home');
+        }
       }).catch()
-      console.log();
     }else {
-      console.log('请重试');
+      ElNotification({
+        title: '登陆失败，请重试',
+        type: 'warning'
+      })
+      getVcimg()
     }
   })
 }
@@ -61,8 +72,6 @@ const decodePwd = ref('')
 const getVcimg = () => {
   axios.get('/api/vcimg').then(res => {
     decodePwd.value = 'data:image/jpeg;base64,' + res.data.data
-    // console.log(res.data)
-    // console.log(decodePwd.value)
   })
 }
 getVcimg()

@@ -1,10 +1,25 @@
 <script setup>
-  import {ref} from "vue";
+import {ref} from "vue";
+import {storage} from "@/storage/storage";
+import router from "@/router/router";
+import {ElNotification} from "element-plus";
 
-  const visible = ref(false)
-  const test = () => {
-    console.log(visible.value)
-  }
+const visible = ref(false)
+const test = () => {
+  console.log(visible.value)
+}
+const getIsAuthenticated = () => {
+  console.log(storage.get('isAuthenticated'))
+}
+const logOff = () => {
+  storage.remove('isAuthenticated')
+  router.push('/login')
+  ElNotification({
+    title: '退出登录',
+    message: '请重新登录',
+    type: 'success'
+  })
+}
 </script>
 
 <template>
@@ -18,6 +33,8 @@
       <el-button @click="visible = true;test()" >删除</el-button>
     </template>
   </el-popover>
+  <el-button @click="getIsAuthenticated">查看登录状态</el-button>
+  <el-button @click="logOff">退出登录</el-button>
 </template>
 
 <style scoped>

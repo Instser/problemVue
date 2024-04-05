@@ -5,6 +5,7 @@ import course from "@/views/coursePage.vue";
 import questions from "@/views/questionsPage.vue";
 import central from "@/views/centralPage.vue";
 import login from "@/views/loginPage.vue";
+import {storage} from "@/storage/storage";
 
 const routes = [
     {
@@ -32,8 +33,10 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-    const isAuthenticated = true;/* 判断用户是否已登录 */
-
+    let isAuthenticated = storage.get("isAuthenticated");/* 判断用户是否已登录 */
+    if (isAuthenticated === null) {
+        isAuthenticated = false
+    }
     if (to.name !== '登录' && !isAuthenticated) {
         next({ name: '登录' });
     } else if (to.name === '登录' && isAuthenticated) {
