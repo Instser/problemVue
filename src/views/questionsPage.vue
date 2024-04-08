@@ -27,7 +27,7 @@
     axios.post('/api/questions/page', JSON.parse(JSON.stringify({
       page: 1,
       pageSize: 10,
-      folderId: 2
+      folderId: 1
     }))
     ).then(res => {
       tableData.value = res.data.data.list
@@ -76,10 +76,10 @@
 
 <template>
   <el-table :data="tableData" style="width: 100%" @selection-change="handleSelectionChange">
-    <el-table-column fixed type="selection" width="39" />
-    <el-table-column prop="id" label="序号" width="80" />
-    <el-table-column prop="description" label="文件夹/题目" width="880" />
-    <el-table-column prop="quesCourStr" label="课程" width="120" />
+    <el-table-column fixed type="selection" width='40' />
+    <el-table-column prop="id" label="序号" width="60" />
+    <el-table-column prop="description" label="文件夹/题目" show-overflow-tooltip width="auto" />
+    <el-table-column prop="quesCourStr" label="课程" width="150"  />
     <el-table-column prop="types" label="题型" width="120" />
     <el-table-column prop="hard" label="难易" width="100" />
     <el-table-column fixed="right" label="操作" width="100">

@@ -5,6 +5,7 @@ import course from "@/views/coursePage.vue";
 import questions from "@/views/questionsPage.vue";
 import central from "@/views/centralPage.vue";
 import login from "@/views/loginPage.vue";
+import edit from '@/views/editPage.vue'
 import {storage} from "@/storage/storage";
 
 const routes = [
@@ -23,7 +24,12 @@ const routes = [
     {
         path: '/login',
         name: '登录',
-        component: login,
+        component: login
+    },
+    {
+        path: '/edit',
+        name: '编辑',
+        component: edit
     }
 ]
 
