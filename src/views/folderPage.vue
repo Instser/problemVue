@@ -3,42 +3,42 @@ import {onMounted, ref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
 
-  const tableData = ref([])
-  const params = ref({
-    page: 1,
-    pageSize: 2
+const tableData = ref([])
+const params = ref({
+  page: 1,
+  pageSize: 2
+})
+const count = ref(1)
+const multipleSelection = ref([])
+const getPage = () => {
+  axios.get('/api/course/page', {
+    params: {
+      page: params.value.page,
+      pageSize: params.value.pageSize
+    }
+  }).then(res => {
+    tableData.value = res.data.data.list
+    count.value = res.data.data.count
   })
-  const count = ref(1)
-  const multipleSelection = ref([])
-  const getPage = () => {
-    axios.get('/api/course/page', {
-      params: {
-        page: params.value.page,
-        pageSize: params.value.pageSize
-      }
-    }).then(res => {
-      tableData.value = res.data.data.list
-      count.value = res.data.data.count
-    })
-  }
-  const handleSizeChange = (val) => {
-    params.value.pageSize = val
-    getPage()
-  }
-  const handleClick = (row) => {
-    console.log(row.id)
-  }
-  const handleCurrentChange = (val) => {
-    params.value.page = val
-    console.log(params.value.page, params.value.pageSize)
-    getPage()
-  }
-  const handleSelectionChange = (val) => {
-    multipleSelection.value = val
-  }
-  onMounted(() => {
-    getPage()
-  })
+}
+const handleSizeChange = (val) => {
+  params.value.pageSize = val
+  getPage()
+}
+const handleClick = (row) => {
+  console.log(row.id)
+}
+const handleCurrentChange = (val) => {
+  params.value.page = val
+  console.log(params.value.page, params.value.pageSize)
+  getPage()
+}
+const handleSelectionChange = (val) => {
+  multipleSelection.value = val
+}
+onMounted(() => {
+  getPage()
+})
 </script>
 
 <template>

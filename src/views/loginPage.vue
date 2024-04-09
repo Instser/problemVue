@@ -12,6 +12,7 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="login">登录</el-button>
+        <el-checkbox v-model="remenberMe" label="记住账号" />
       </el-form-item>
       <img :src="decodePwd" @click="getVcimg" alt="加载失败" />
     </el-form>
@@ -26,6 +27,8 @@ import {storage} from "@/storage/storage";
 import {ElNotification} from "element-plus";
 
 const formRef = ref(null)
+const decodePwd = ref('')
+const remenberMe = ref(false)
 const loginForm = ref({
   username: '',
   password: '',
@@ -43,10 +46,11 @@ const login = () => {
       axios.post('/api/doLogin', JSON.parse(JSON.stringify({
             username: loginForm.value.username,
             password: loginForm.value.password,
+            'remenber-me': remenberMe.value,
             code: loginForm.value.code
           }))
       ).then(res => {
-        console.log(res.data)
+        console.log(remenberMe.value)
         if (res.data.msg === '验证码不匹配!') {
           ElNotification({
             title: '验证码不正确',
@@ -68,7 +72,6 @@ const login = () => {
     }
   })
 }
-const decodePwd = ref('')
 const getVcimg = () => {
   axios.get('/api/vcimg').then(res => {
     decodePwd.value = 'data:image/jpeg;base64,' + res.data.data

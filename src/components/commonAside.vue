@@ -22,6 +22,13 @@
       url: 'Questions/Questions'
     },
     {
+      path: '/folder',
+      name: 'folder',
+      label: '文件夹',
+      icon: 'FolderOpened',
+      url: 'Questions/Questions'
+    },
+    {
       path: '/central',
       name: 'central',
       label: '个人中心',

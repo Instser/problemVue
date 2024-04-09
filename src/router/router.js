@@ -6,6 +6,7 @@ import questions from "@/views/questionsPage.vue";
 import central from "@/views/centralPage.vue";
 import login from "@/views/loginPage.vue";
 import edit from '@/views/editPage.vue'
+import folder from '@/views/folderPage.vue'
 import {storage} from "@/storage/storage";
 
 const routes = [
@@ -18,6 +19,7 @@ const routes = [
             {path: 'home', name: '首页', component: home}, // 首页
             {path: 'course', name: '课程管理', component: course}, // 课程管理
             {path: 'questions', name: '试题管理', component: questions}, // 试题管理
+            {path: 'folder', name: '文件夹', component: folder}, // 题目文件夹
             {path: 'central', name: '个人中心', component: central} // 个人中心
         ]
     },

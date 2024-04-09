@@ -1,6 +1,8 @@
 <script setup>
   import {ref} from "vue";
   import axios from "axios";
+  import router from "@/router/router";
+  import {ArrowDown} from "@element-plus/icons-vue";
 
   const tableData = ref([])
   const pageParams = ref({
@@ -23,6 +25,7 @@
   const dialogVisible = ref(false)
   const currentPage = ref(1)
   const labelWidth = '140px'
+  const courseList = ref([])
   const getPage = () => {
     axios.post('/api/questions/page', JSON.parse(JSON.stringify({
       page: 1,
@@ -38,6 +41,7 @@
   const handleClick = (row) => {
     // 通过row获取id，在使用filter去tableData中寻找符合id的数组对象，然后赋予formData
     formData.value = tableData.value.filter(item => item.id === row.id)[0]
+    router.push({path: '/edit', query: {id : row.id}})
     console.log(formData.value)
   }
   const handleSizeChange = (val) =>{
@@ -75,16 +79,34 @@
 </script>
 
 <template>
-  <el-table :data="tableData" style="width: 100%" @selection-change="handleSelectionChange">
+  <el-dropdown>
+    <el-button type="primary">
+      课程一
+      <el-icon class="el-icon--right">
+        <arrow-down />
+      </el-icon>
+    </el-button>
+    <template #dropdown>
+      <el-dropdown-menu>
+        <el-dropdown-item v-for="item in courseList" :key = 'item.id'> {{ item.name }}</el-dropdown-item>
+      </el-dropdown-menu>
+    </template>
+  </el-dropdown>
+  <el-table :data="tableData"
+            style="width: 100%"
+            table-layout="auto"
+            @selection-change="handleSelectionChange"
+            :header-cell-style="{textAlign: 'center'}"
+            :cell-style="{ textAlign: 'center' }">
     <el-table-column fixed type="selection" width='40' />
     <el-table-column prop="id" label="序号" width="60" />
-    <el-table-column prop="description" label="文件夹/题目" show-overflow-tooltip width="auto" />
-    <el-table-column prop="quesCourStr" label="课程" width="150"  />
-    <el-table-column prop="types" label="题型" width="120" />
-    <el-table-column prop="hard" label="难易" width="100" />
-    <el-table-column fixed="right" label="操作" width="100">
+    <el-table-column prop="description" label="文件夹/题目" show-overflow-tooltip width="auto"/>
+    <el-table-column prop="quesCourStr" label="课程" />
+    <el-table-column prop="types" label="题型" />
+    <el-table-column prop="hard" label="难易" />
+    <el-table-column fixed="right" label="操作">
       <template  #default="{ row }">
-        <el-button link type="primary" size="small" @click="handleClick(row), dialogVisible = true">编辑</el-button>
+        <el-button link type="primary" size="small" @click="handleClick(row)">编辑</el-button>
         <el-popconfirm
             width="220"
             confirm-button-text="确定"

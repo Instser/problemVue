@@ -1,18 +1,18 @@
 <script setup>
 import {onBeforeUnmount, ref} from "vue";
-  const fullWidth = ref(document.documentElement.clientWidth - 202)
-  const fullHeight = ref(document.documentElement.clientHeight - 65)
-  const creatEventListener = () => {
-    window.addEventListener('resize', handleResize)
-  }
-  const handleResize= () => {
-    fullWidth.value = document.documentElement.clientWidth - 202
-    fullHeight.value = document.documentElement.clientHeight - 65
-  }
-  onBeforeUnmount(() =>{
-    window.removeEventListener('resize', handleResize)
-  })
-  creatEventListener()
+const fullWidth = ref(document.documentElement.clientWidth - 202)
+const fullHeight = ref(document.documentElement.clientHeight - 65)
+const creatEventListener = () => {
+  window.addEventListener('resize', handleResize)
+}
+const handleResize= () => {
+  fullWidth.value = document.documentElement.clientWidth - 202
+  fullHeight.value = document.documentElement.clientHeight - 65
+}
+onBeforeUnmount(() =>{
+  window.removeEventListener('resize', handleResize)
+})
+creatEventListener()
 
 </script>
 
