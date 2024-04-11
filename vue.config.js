@@ -12,6 +12,9 @@ module.exports = defineConfig({
     }
   },
   devServer:{
+    client: {
+      overlay: false
+    },
     // 配置代理
     proxy:{
       '/api':{

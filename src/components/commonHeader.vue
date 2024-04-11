@@ -2,7 +2,7 @@
 
 
 import {useRoute} from "vue-router";
-import {ref, watch} from "vue";
+import {onMounted, ref, watch} from "vue";
 // eslint-disable-next-line no-unused-vars
 const props = defineProps({
   name: String
@@ -11,8 +11,8 @@ const route = useRoute()
 const isVisible = ref(false)
 const buttonText = ref('')
 const buttonPath = ref('')
-watch(() => route.name, (newName) => {
-  switch (newName) {
+const setButton = () => {
+  switch (route.name) {
     case '首页':
       isVisible.value = false;
       break;
@@ -34,6 +34,15 @@ watch(() => route.name, (newName) => {
     case '个人中心':
       isVisible.value = false;
   }
+}
+onMounted(() => {
+  // 在页面刷新时设置按钮
+  setButton()
+})
+// eslint-disable-next-line no-unused-vars
+watch(() => route.name, (newName) => {
+  // 监听路由变化改变按钮
+  setButton()
 })
 </script>
 

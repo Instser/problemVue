@@ -3,6 +3,7 @@ import {ref} from "vue";
 import {storage} from "@/storage/storage";
 import router from "@/router/router";
 import {ElNotification} from "element-plus";
+import axios from "axios";
 
 const visible = ref(false)
 const test = () => {
@@ -12,6 +13,7 @@ const getIsAuthenticated = () => {
   console.log(storage.get('isAuthenticated'))
 }
 const logOff = () => {
+  axios.get('/api/logout')
   storage.remove('isAuthenticated')
   router.push('/login')
   ElNotification({

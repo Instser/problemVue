@@ -2,11 +2,12 @@
 import {onMounted, ref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
+import {storage} from "@/storage/storage";
 
   const tableData = ref([])
   const params = ref({
     page: 1,
-    pageSize: 2
+    pageSize: 5
   })
   const count = ref(1)
   const multipleSelection = ref([])
@@ -17,8 +18,14 @@ import router from "@/router/router";
         pageSize: params.value.pageSize
       }
     }).then(res => {
-      tableData.value = res.data.data.list
-      count.value = res.data.data.count
+      if (res.data.code === 200) {
+        tableData.value = res.data.data.list
+        count.value = res.data.data.count
+      }
+      if (res.data.code === 401) {
+        storage.remove('isAuthenticated');
+        router.push('/login')
+      }
     })
   }
   const handleSizeChange = (val) => {
@@ -47,7 +54,8 @@ import router from "@/router/router";
         :data="tableData"
         :header-cell-style="{textAlign: 'center'}"
         :cell-style="{ textAlign: 'center' }"
-        @selection-change="handleSelectionChange">
+        @selection-change="handleSelectionChange"
+        empty-text="没有数据">
       border
       style="width: 100%">
       <el-table-column
@@ -87,7 +95,7 @@ import router from "@/router/router";
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
           :current-page="params.page"
-          :page-sizes="[1, 2, 3, 4]"
+          :page-sizes="[5, 10, 15, 20]"
           :page-size="params.pageSize"
           layout="total, sizes, prev, pager, next, jumper"
           :total="count">

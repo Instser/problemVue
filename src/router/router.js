@@ -7,6 +7,7 @@ import central from "@/views/centralPage.vue";
 import login from "@/views/loginPage.vue";
 import edit from '@/views/editPage.vue'
 import folder from '@/views/folderPage.vue'
+import test from '@/views/testPage.vue'
 import {storage} from "@/storage/storage";
 
 const routes = [
@@ -32,6 +33,11 @@ const routes = [
         path: '/edit',
         name: '编辑',
         component: edit
+    },
+    {
+        path: '/test',
+        name: '测试',
+        component: test
     }
 ]
 

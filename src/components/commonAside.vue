@@ -1,46 +1,42 @@
 <script setup>
-  const menuData = [
-    {
-      path: '/home',
-      name: 'home',
-      label: '首页',
-      icon: 'view',
-      url: 'Home/Home'
-    },
-    {
-      path: '/course',
-      name: 'course',
-      label: '课程管理',
-      icon: 'reading',
-      url: 'Course/Course'
-    },
-    {
-      path: '/questions',
-      name: 'questions',
-      label: '试题管理',
-      icon: 'document-copy',
-      url: 'Questions/Questions'
-    },
-    {
-      path: '/folder',
-      name: 'folder',
-      label: '文件夹',
-      icon: 'FolderOpened',
-      url: 'Questions/Questions'
-    },
-    {
-      path: '/central',
-      name: 'central',
-      label: '个人中心',
-      icon: 'user',
-      url: 'Central/Central'
-    }
-  ]
 
-  // TODO 目前用不到store
-  // const clickMenu = (item) => {
-  //   $store.commit('SELECT_MENU', item)
-  // }
+const menuData = [
+  {
+    path: '/home',
+    name: 'home',
+    label: '首页',
+    icon: 'view',
+    url: 'Home/Home'
+  },
+  {
+    path: '/course',
+    name: 'course',
+    label: '课程管理',
+    icon: 'reading',
+    url: 'Course/Course'
+  },
+  {
+    path: '/questions',
+    name: 'questions',
+    label: '试题管理',
+    icon: 'document-copy',
+    url: 'Questions/Questions'
+  },
+  {
+    path: '/folder',
+    name: 'folder',
+    label: '文件夹',
+    icon: 'FolderOpened',
+    url: 'Questions/Questions'
+  },
+  {
+    path: '/central',
+    name: 'central',
+    label: '个人中心',
+    icon: 'user',
+    url: 'Central/Central'
+  }
+]
 </script>
 
 <template>

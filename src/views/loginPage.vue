@@ -4,15 +4,15 @@
       <el-form-item label="用户名" prop="username">
         <el-input v-model="loginForm.username"></el-input>
       </el-form-item>
-      <el-form-item label="密码" prop="password">
+      <el-form-item label="密码" prop="password" @keydown.enter="login">
         <el-input type="password" v-model="loginForm.password"></el-input>
       </el-form-item>
-      <el-form-item label="验证码" prop="code">
+      <el-form-item label="验证码" prop="code" @keydown.enter="login">
         <el-input type="text" v-model="loginForm.code"></el-input>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="login">登录</el-button>
-        <el-checkbox v-model="remenberMe" label="记住账号" />
+        <el-checkbox v-model="rememberMe" label="记住账号" />
       </el-form-item>
       <img :src="decodePwd" @click="getVcimg" alt="加载失败" />
     </el-form>
@@ -28,7 +28,7 @@ import {ElNotification} from "element-plus";
 
 const formRef = ref(null)
 const decodePwd = ref('')
-const remenberMe = ref(false)
+const rememberMe = ref(false)
 const loginForm = ref({
   username: '',
   password: '',
@@ -46,11 +46,10 @@ const login = () => {
       axios.post('/api/doLogin', JSON.parse(JSON.stringify({
             username: loginForm.value.username,
             password: loginForm.value.password,
-            'remenber-me': remenberMe.value,
+            'remenber-me': rememberMe.value,
             code: loginForm.value.code
           }))
       ).then(res => {
-        console.log(remenberMe.value)
         if (res.data.msg === '验证码不匹配!') {
           ElNotification({
             title: '验证码不正确',
