@@ -76,7 +76,7 @@ const loadData = async () => {
       console.log(tableData.value)
       count.value = res.data.data.count
       // 通过比较得知是否还有能加载的题目。
-      isLoading.value = tableData.value.length < res.data.data.count;
+      isLoading.value = tableData.value.length < res.data.data.count + 2;
       // 处理后将loading状态解锁
       loading.value = false
     }else{
@@ -141,7 +141,7 @@ const handleResize= () => {
   fullHeight.value = document.documentElement.clientHeight - 97
 }
 const judgment = (row) =>{
-  console.log(row.row.index)
+  console.log(row.de)
 }
 onBeforeUnmount(() =>{
   window.removeEventListener('resize', handleResize)
