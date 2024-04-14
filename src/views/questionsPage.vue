@@ -1,11 +1,10 @@
 <script setup>
-import {computed, onBeforeUnmount, reactive, ref} from "vue";
+import {computed, onBeforeUnmount, ref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
 import {ArrowDown} from "@element-plus/icons-vue";
 import {ElNotification} from "element-plus";
 import {storage} from "@/storage/storage";
-import {FormRules} from "element-plus";
 
 const tableData = ref([])
 const pageParams = ref({
@@ -40,26 +39,29 @@ const tableRef = ref(null)
 const lazyLoadArr = ref([])
 const openOptions = ref(['开卷', '闭卷'])
 const testForm = ref({
-  subject: 'Hello',
+  subject: '',
   class: '',
   time: '',
   yearStart: '',
   yearEnd: '',
   term: '',
+  number: '',
   open: '',
-  exam: [],
-  resource: '',
-  desc: '',
+  exam: '',
+  mingTi: '',
+  shenTi: '',
+  shenHe: '',
+  shenPi: ''
 })
 const testArr = ref([])
 const testFormVisible = ref(false)
-
-class RuleForm {
-}
-
-const rules = reactive<FormRules<RuleForm>>({
+const rules = {
   subject: [
-    { required: true, message: 'Please input Activity name', trigger: 'blur' },
+    {
+      required: true,
+      message: '请输入考试名称',
+      trigger: 'blur'
+    },
   ],
   class: [
     {
@@ -91,6 +93,13 @@ const rules = reactive<FormRules<RuleForm>>({
       trigger: 'change',
     },
   ],
+  number: [
+    {
+      required: true,
+      message: '请输入章节',
+      trigger: 'change'
+    }
+  ],
   term: [
     {
       required: true,
@@ -107,7 +116,6 @@ const rules = reactive<FormRules<RuleForm>>({
   ],
   exam: [
     {
-      type: 'array',
       required: true,
       message: '请选择考试类型',
       trigger: 'change',
@@ -123,8 +131,7 @@ const rules = reactive<FormRules<RuleForm>>({
   desc: [
     { required: true, message: 'Please input activity form', trigger: 'blur' },
   ],
-})
-
+}
 
 const getCourse = async () => {
   await axios.get('api/course/getAll').then(res => {
@@ -346,19 +353,14 @@ const creatFolder = () => {
 // watch(search, (newval, oldValue) => {
 //   tableRef.value.filter(newval)
 // })
-const filterTableData = computed(() =>
-    tableData.value.filter(
-        (data) =>
-            !search.value ||
-            data.name.toLowerCase().includes(search.value.toLowerCase())
-    )
-)
 const addTest = (row) =>{
   console.log(typeof row.index)
   console.log(row.index)
   // 判断数据的index是number还是string，以此确定是不是子数据。
   if (typeof row.index === "number") {
     // number是外围题目，直接加入test数组中。
+
+    tableData.value[row.index - 1].inTest = true
     testArr.value.push(tableData.value[row.index - 1]);
   }
 
@@ -366,15 +368,43 @@ const addTest = (row) =>{
     // string是文件夹中的题目，获得位置再添加。
     let indexArr = row.index.split('-')
     // 一元加号运算符:  +indexArr[0]  可以使indexArr[0]的类型转化为number
-    testArr.value.push(tableData.value[+indexArr[0] - 1].childrenList[+indexArr[1] - 1])
+    let question = tableData.value[+indexArr[0] - 1].childrenList[+indexArr[1] - 1]
+    // 标记题目被加入组卷数组中。
+    tableData.value[+indexArr[0] - 1].childrenList[+indexArr[1] - 1].inTest = true
+    testArr.value.push(question)
+  }
+  console.log(testArr.value.findIndex(item => item.typeName === '1'))
+  console.log(testArr.value)
+}//  将选中的试题加入组件列表中
+const removeTest = (row) => {
+  // 获取id，删除
+  testArr.value = testArr.value.filter(item => item.id !== row.id);
+  if (typeof row.index === "string") {
+    let indexArr = row.index.split('-')
+    tableData.value[+indexArr[0] - 1].childrenList[+indexArr[1] - 1].inTest = false
+  }
+  if (typeof row.index === "number") {
+    tableData.value[row.index - 1].inTest = false;
   }
   console.log(testArr.value)
-}
-const cellStyle = (row) => {
-  if (row.foldDesc) {
-    return
-  }
-}
+} // 将不需要的试题移除组卷列表
+const creatTest = () => {
+  axios.post('/api/questions/buildTest', JSON.parse(JSON.stringify({
+    title: testForm.value,
+    list: [
+      {
+        typeName: '选择题',
+        "typeDesc": "单项选择题，每个题目只有一个正确选项，共10题，每题3分，共30分。",
+        "quesId": [1,2,3,4,5]
+      }
+    ]
+  })))
+}// 生成试卷
+const clearTest = () => {
+  testArr.value.forEach((item) => {
+    removeTest(item)
+  })
+} //点击清空组卷列表中的试题
 
 
 onBeforeUnmount(() =>{
@@ -398,7 +428,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
 <template>
   <div class="header_div">
     <el-button type="primary" round @click="folderDialogVisible = true">创建文件夹</el-button>
-    <el-button type="primary" round @click="folderDialogVisible = true">创建试题</el-button>
+    <el-button type="primary" round @click="() => router.push('/edit')">创建试题</el-button>
     <el-button  round icon="Delete" @click="deleteEvent">批量删除</el-button>
     <el-dropdown>
       <el-button round>
@@ -414,18 +444,20 @@ creatEventListener(); // 页面创建时开始监听页面高度
       </template>
     </el-dropdown>
     <el-col :span="6">
-      <el-statistic title="已选题目" :value="multipleSelection.questionList.length" />
+      <el-statistic title="已选题目" :value="testArr.length" />
     </el-col>
     <el-button type="primary" @click="testFormVisible = true"
     >创建试卷
     </el-button>
+    <el-button type="primary" @click="clearTest()"
+    >清空已选择试题
+    </el-button>
   </div>
   <div>
-    <el-table :data="filterTableData"
+    <el-table :data="tableData"
               :ref="tableRef"
               stripe
               border
-              :cell-style="cellStyle"
               style="width: 100%"
               table-layout="auto"
               @selection-change="handleSelectionChange"
@@ -452,7 +484,8 @@ creatEventListener(); // 页面创建时开始监听页面高度
           <el-input v-model="search" size="small" placeholder="输入题目关键字" />
         </template>
         <template  #default="{ row, $index }">
-          <el-button link type="primary" size="small" @click="addTest(row)" v-if="!row.hasChildren && row.description">加入试卷</el-button>
+          <el-button link type="primary" size="small" @click="addTest(row)" v-if="!row.hasChildren && row.description && !row.inTest">加入试卷</el-button>
+          <el-button link type="primary" size="small" @click="removeTest(row)" v-if="!row.hasChildren && row.description && row.inTest === true">移出试卷</el-button>
           <el-popconfirm
               width="220"
               confirm-button-text="确定"
@@ -540,12 +573,15 @@ creatEventListener(); // 页面创建时开始监听页面高度
       <el-form-item label="考试时长" prop="time">
         <el-input v-model="testForm.time" />
       </el-form-item>
+      <el-form-item label="章节" prop="number">
+        <el-input v-model="testForm.number" />
+      </el-form-item>
       <el-form-item label="学年" required>
         <el-col :span="11">
-          <el-form-item prop="date1">
+          <el-form-item prop="yearStart">
             <el-date-picker
                 v-model="testForm.yearStart"
-                type="date"
+                type="year"
                 label="选择起始年份"
                 placeholder="选择起始年份"
                 style="width: 100%"
@@ -556,9 +592,10 @@ creatEventListener(); // 页面创建时开始监听页面高度
           <span class="text-gray-500">-</span>
         </el-col>
         <el-col :span="11">
-          <el-form-item prop="date2">
-            <el-time-picker
+          <el-form-item prop="yearEnd">
+            <el-date-picker
                 v-model="testForm.yearEnd"
+                type="year"
                 label="选择结束年份"
                 placeholder="选择结束年份"
                 style="width: 100%"
@@ -570,32 +607,46 @@ creatEventListener(); // 页面创建时开始监听页面高度
         <el-input v-model="testForm.term" />
       </el-form-item>
       <el-form-item label="开/闭卷" prop="open">
-        <el-segmented v-model="testForm.open" :options="openOptions" />
-      </el-form-item>
-      <el-form-item label="考试类型" prop="exam">
-        <el-checkbox-group v-model="testForm.exam">
-          <el-checkbox value="考试" name="exam">
-            考试
-          </el-checkbox>
-          <el-checkbox value="考察" name="exam">
-            考查
-          </el-checkbox>
-        </el-checkbox-group>
-      </el-form-item>
-      <el-form-item label="Resources" prop="resource">
-        <el-radio-group v-model="testForm.resource">
-          <el-radio value="Sponsorship">Sponsorship</el-radio>
-          <el-radio value="Venue">Venue</el-radio>
+        <el-radio-group v-model="testForm.open">
+          <el-radio-button label="开卷" value="开卷" />
+          <el-radio-button label="闭卷" value="闭卷" />
         </el-radio-group>
       </el-form-item>
-      <el-form-item label="Activity form" prop="desc">
-        <el-input v-model="testForm.desc" type="textarea" />
+      <el-form-item label="考试类型" prop="exam">
+        <el-radio-group v-model="testForm.exam">
+          <el-radio-button label="考试" value="考试" />
+          <el-radio-button label="考察" value="考察" />
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item label="命题老师" prop="mingTi">
+        <el-input v-model="testForm.mingTi" placeholder="输入命题老师" clearable />
+      </el-form-item>
+      <el-form-item label="审题老师" prop="shenTI">
+        <el-input v-model="testForm.shenTi" placeholder="输入审题老师" clearable />
+      </el-form-item>
+      <el-form-item label="审核老师" prop="mingTi">
+        <el-input v-model="testForm.shenHe" placeholder="输入审核老师" clearable />
+      </el-form-item>
+      <el-form-item label="审批老师" prop="shenPi">
+        <el-input v-model="testForm.shenPi" placeholder="输入审批老师" clearable />
+      </el-form-item>
+      <el-form-item label="选择题" prop="question1" v-if="testArr.findIndex(item => item.typeName === '1') !== -1">
+        <p>1</p>
+      </el-form-item>
+      <el-form-item label="填空题" prop="question1" v-if="testArr.findIndex(item => item.typeName === '2') !== -1">
+        <p>2</p>
+      </el-form-item>
+      <el-form-item label="计算题" prop="question1" v-if="testArr.findIndex(item => item.typeName === '3') !== -1">
+        <p>3</p>
+      </el-form-item>
+      <el-form-item label="证明题" prop="question1" v-if="testArr.findIndex(item => item.typeName === '4') !== -1">
+        <p>4</p>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="testFormVisible = false">
-          取消
+        <el-button type="primary" @click="testFormVisible = false; creatTest()">
+          创建
         </el-button>
-        <el-button @click="testFormVisible = false">创建</el-button>
+        <el-button @click="testFormVisible = false">取消</el-button>
       </el-form-item>
     </el-form>
   </el-dialog>
