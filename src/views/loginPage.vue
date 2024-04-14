@@ -12,7 +12,7 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="login">登录</el-button>
-        <el-checkbox v-model="rememberMe" label="记住账号" />
+        <el-checkbox v-model=rememberMe value="1" label="记住账号" />
       </el-form-item>
       <img :src="decodePwd" @click="getVcimg" alt="加载失败" />
     </el-form>
@@ -28,7 +28,7 @@ import {ElNotification} from "element-plus";
 
 const formRef = ref(null)
 const decodePwd = ref('')
-const rememberMe = ref(false)
+const rememberMe = ref([])
 const loginForm = ref({
   username: '',
   password: '',
@@ -46,7 +46,7 @@ const login = () => {
       axios.post('/api/doLogin', JSON.parse(JSON.stringify({
             username: loginForm.value.username,
             password: loginForm.value.password,
-            'remenber-me': rememberMe.value,
+            'remember-me': rememberMe.value[0],
             code: loginForm.value.code
           }))
       ).then(res => {
@@ -57,8 +57,11 @@ const login = () => {
           })
           getVcimg()
         }
-        if (res.data.data === '登录成功') {
+        if ('data' in res.data) {
+          console.log('登录')
           storage.set('isAuthenticated', true);
+          storage.set('role', res.data.data.role)
+          storage.set('freshRoute', true)
           router.push('/home');
         }
       }).catch()

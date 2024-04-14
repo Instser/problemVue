@@ -15,13 +15,13 @@ import axios from "axios";
 const init = {
   selector: 'textarea',
   language: 'zh_CN',
-  content_style: "img {max-width:100%;}",
+  content_style: "img {max-width:30%;height: auto;}",
   autoresize_bottom_margin: 50, //編輯器初始化底边距。
   min_height: 600, //编辑器最小高度
   statusbar: false, // 显示下方操作栏
   image_dimensions: false, // 禁止操作图片
   images_upload_url: '/api/questions/uploadPicture',
-  plugins: 'link lists image code table wordcount image autoresize', // 富文本插件
+  plugins: 'link lists image code table wordcount image  autoresize ', // 富文本插件
   font_size_formats: '8px 10px 12px 14px 16px 18px 24px 36px 48px 128px', // 字体大小文本
   font_family_formats:
       '微软雅黑=Microsoft YaHei,Helvetica Neue,PingFang SC,sans-serif;宋体=simsun,serif', // 字体选择配置
@@ -60,6 +60,7 @@ const addQuestion = () => {
     // 没有id就用add添加问题。
     axios.post('/api/questions/add', JSON.parse(JSON.stringify(
         questionForm.value
+        // eslint-disable-next-line no-unused-vars
     ))).then(res => {
       console.log(JSON.parse(JSON.stringify(
           questionForm.value

@@ -1,18 +1,19 @@
 <script setup>
-import {onBeforeUnmount, ref} from "vue";
+import {computed, onBeforeUnmount, reactive, ref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
 import {ArrowDown} from "@element-plus/icons-vue";
 import {ElNotification} from "element-plus";
 import {storage} from "@/storage/storage";
+import {FormRules} from "element-plus";
 
 const tableData = ref([])
 const pageParams = ref({
   page: 1,
   pageSize: 20
 })
-const count = ref()
-const folderCount = ref(0)
+const count = ref() // 数据库中当前课程下的文件夹和所有题目的总数据
+const currenCount = ref() // 数当前table中的数据数量
 const multipleSelection = ref({
   folderList: [],
   questionList: []
@@ -29,15 +30,102 @@ const search = ref('')
 const isLoading = ref(false)
 const fullHeight = ref(document.documentElement.clientHeight - 97)
 const loading = ref(false)
-const dialogFormVisible = ref(false)
+const folderDialogVisible = ref(false)
 const dialogForm = ref({
   name: '',
   desc: '',
   courseId: ''
 })
-/*
-@params
- */
+const tableRef = ref(null)
+const lazyLoadArr = ref([])
+const openOptions = ref(['开卷', '闭卷'])
+const testForm = ref({
+  subject: 'Hello',
+  class: '',
+  time: '',
+  yearStart: '',
+  yearEnd: '',
+  term: '',
+  open: '',
+  exam: [],
+  resource: '',
+  desc: '',
+})
+const testArr = ref([])
+const testFormVisible = ref(false)
+
+class RuleForm {
+}
+
+const rules = reactive<FormRules<RuleForm>>({
+  subject: [
+    { required: true, message: 'Please input Activity name', trigger: 'blur' },
+  ],
+  class: [
+    {
+      required: true,
+      message: '请选择班级',
+      trigger: 'change',
+    },
+  ],
+  time: [
+    {
+      required: true,
+      message: '请输入考试时长',
+      trigger: 'change',
+    },
+  ],
+  yearStart: [
+    {
+      type: 'date',
+      required: true,
+      message: '请选择起始年份',
+      trigger: 'change',
+    },
+  ],
+  yearEnd: [
+    {
+      type: 'date',
+      required: true,
+      message: '请选择结束年份',
+      trigger: 'change',
+    },
+  ],
+  term: [
+    {
+      required: true,
+      message: '请输入学期',
+      trigger: 'change',
+    }
+  ],
+  open: [
+    {
+      required: true,
+      message: 'Please select a location',
+      trigger: 'change',
+    },
+  ],
+  exam: [
+    {
+      type: 'array',
+      required: true,
+      message: '请选择考试类型',
+      trigger: 'change',
+    },
+  ],
+  resource: [
+    {
+      required: true,
+      message: 'Please select activity resource',
+      trigger: 'change',
+    },
+  ],
+  desc: [
+    { required: true, message: 'Please input activity form', trigger: 'blur' },
+  ],
+})
+
+
 const getCourse = async () => {
   await axios.get('api/course/getAll').then(res => {
     console.log(res.data)
@@ -52,21 +140,24 @@ const getCourse = async () => {
       console.log(currentCourse.value)
     }
   })
-}
+} // 加载课程数据
 const getFolder = async () => {
+  folderArr.value = []
   await axios.get('/api/quesFolder/getFolder').then(res => {
     folderArr.value = res.data.data
-    for (let i = 0; i < res.data.data.length; i++) {
+    for (let i = 0; i < folderArr.value.length; i++) {
       // 为文件夹对象添加description属性，传入tableData中
-      res.data.data[i].description = res.data.data[i].name
+      folderArr.value[i].description = res.data.data[i].name
       // 添加children属性来实现树形表格加载文件夹下的题目
-      res.data.data[i].children = true
+      folderArr.value[i].hasChildren = true
+      // 根据table中的元素数量设置唯一索引
+      folderArr.value[i].index = tableData.value.length + 1
       tableData.value.push(res.data.data[i])
-      folderCount.value++
+      currenCount.value++
       console.log(res.data.data[i])
     }
   })
-}
+} //加载文件及数据
 const loadData = async () => {
   loading.value = true
   axios.post('/api/questions/page', JSON.parse(JSON.stringify({
@@ -82,15 +173,17 @@ const loadData = async () => {
     }
     if (res.data.code === 200) {
       pageParams.value.page++
-      // 将返回的数据遍历push到tableData
+      // 将获取的题目数据全部传入题目数组
       questionArr.value = res.data.data.list
+      // 将返回的数据遍历push到tableData,判断是否有题目
       console.log(questionArr.value)
-      for (let i = 0; i < res.data.data.list.length; i++) {
-        tableData.value.push(res.data.data.list[i])
+      if (questionArr.value) {
+        for (let i = 0; i < questionArr.value.length; i++) {
+          questionArr.value[i].index = tableData.value.length + 1
+          tableData.value.push(questionArr.value[i])
+        }
       }
-      console.log(res.data.data.list)
-      console.log(tableData.value)
-      console.log(res.data.data.count + folderArr.value.length)
+      // 记录数据库中所有题目加上文件夹的数目
       count.value = res.data.data.count + folderArr.value.length
       // 通过比较得知是否还有能加载的题目,加上文件夹数量，不然会漏题。
       isLoading.value = tableData.value.length < res.data.data.count + folderArr.value.length;
@@ -107,18 +200,26 @@ const loadData = async () => {
   }).catch(e => {
     console.log(e)
   });
-}
-
+} // 加载题目数据
+const freshTable = () => {
+  // 清空table
+  tableData.value = []
+  getFolder()
+  // 重置page参数
+  pageParams.value.page = 1
+  loadData()
+}  // 刷新table内容
 const handleClick = (row) => {
   // 判断是题目还是文件夹
   if (row.foldDesc) {
-    return;
+    // 是文件夹就传入id进行懒加载子数据
+    lazyLoadQuestion(row);
   } else {
     // 点击编辑后，携带获取到的题目id跳转到编辑页面
     router.push({path: '/edit', query: {id : row.id}})
   }
 
-}
+} //点击题目/文件夹，判断跳转
 const handleSelectionChange = (val) => {
   // 重置多选数据列表
   multipleSelection.value = {
@@ -135,7 +236,7 @@ const handleSelectionChange = (val) => {
   }
   console.log("多选列表")
   console.log(multipleSelection.value)
-}
+}//多选逻辑
 const cancelEvent = () => {
   console.log(multipleSelection.value.folderList.map(folder => folder.id).join(','))
 }
@@ -156,29 +257,38 @@ const deleteEvent = () => {
         // 过滤到相同id的题目，只删除文件夹
         if (dataIndex !== -1 && tableData.value[dataIndex].name) {
           tableData.value.splice(dataIndex, 1)
+          count.value--
         }
       }
+      // 重置文件夹多选列表
+      multipleSelection.value.folderList = []
     })
   }
-  axios.post('/api/questions/delete', '',{
-        params: {
-          id: questionIdArr.value.join(',')
+  if (questionIdArr.value[0]) {
+    axios.post('/api/questions/delete', '',{
+          params: {
+            id: questionIdArr.value.join(',')
+          }
+        }
+    ).then(() => {
+      // 通过table索引移除
+      for (let i = 0; i < questionIdArr.value.length; i++) {
+        const dataIndex = tableData.value.findIndex(item => item.id === questionIdArr.value[i])
+        console.log(dataIndex)
+        // 过滤到相同id的文件夹，只删除题目
+        if (dataIndex !== -1 && !tableData.value[dataIndex].name) {
+          tableData.value.splice(dataIndex, 1)
+          count.value--
         }
       }
-  ).then(() => {
-    // 通过table索引移除
-    for (let i = 0; i < questionIdArr.value.length; i++) {
-      const dataIndex = tableData.value.findIndex(item => item.id === questionIdArr.value[i])
-      console.log(dataIndex)
-      // 过滤到相同id的文件夹，只删除题目
-      if (dataIndex !== -1 && !tableData.value[dataIndex].name) {
-        tableData.value.splice(dataIndex, 1)
-      }
-    }
-  });
-
-}
-const courseSelect = (courseItem) => {
+      // 重置id列表
+      multipleSelection.value.questionList = []
+    })
+  }
+  // 操作完成后清空列表
+  tableRef.value.clearSelection()
+} //批量删除逻辑
+const courseSelect = async (courseItem) => {
   // 点击转换到其他课程
   console.log(courseItem.id)
   if (courseItem.id !== currentCourse.value.courseId) {
@@ -187,27 +297,97 @@ const courseSelect = (courseItem) => {
     // 清除列表，然后加入新的课程的题目
     pageParams.value.page = 1
     tableData.value = []
-    getFolder()
-    loadData()
+    // 使用await防止获取顺序出错导致table数量统计不准确
+    try {
+      await getFolder()
+      await loadData();
+    } catch (e) {
+      console.log(e)
+    }
   }
-}
+} // 切换课程并获取文件夹和题目
 const creatEventListener = () => {
   window.addEventListener('resize', handleResize)
-}
+} //设置页面大小监听器
 const handleResize= () => {
-  //获取窗口高度
   fullHeight.value = document.documentElement.clientHeight - 97
+} //获取窗口高度
+const lazyLoadQuestion = (row, treeNode, resolve) => {
+  console.log(row.id)
+  // 通过文件夹id获取到题目后，将返回去数据插入文件夹对象的children数组中
+  axios.post('/api/questions/page', JSON.parse(JSON.stringify({
+    page: 1,
+    pageSize: 100,
+    folderId: row.id
+  }))).then(res => {
+    console.log(res.data.data.list)
+    if (res.data.data.list) {
+      let i = 1
+      // eslint-disable-next-line no-unused-vars
+      res.data.data.list.forEach((item, index) => {
+        item.index = row.index + '-' + i++
+      })
+      tableData.value[row.index - 1].childrenList = res.data.data.list
+      resolve(res.data.data.list);
+    } else {
+      resolve([{}])
+    }
+    console.log(tableData.value);
+  })
+} //点击文件夹懒加载题目
+const creatFolder = () => {
+  axios.post('/api/quesFolder/creatFolder', null, {
+    params: dialogForm.value
+    // eslint-disable-next-line no-unused-vars
+  }).then(res => {
+    freshTable()
+  })
 }
+// watch(search, (newval, oldValue) => {
+//   tableRef.value.filter(newval)
+// })
+const filterTableData = computed(() =>
+    tableData.value.filter(
+        (data) =>
+            !search.value ||
+            data.name.toLowerCase().includes(search.value.toLowerCase())
+    )
+)
+const addTest = (row) =>{
+  console.log(typeof row.index)
+  console.log(row.index)
+  // 判断数据的index是number还是string，以此确定是不是子数据。
+  if (typeof row.index === "number") {
+    // number是外围题目，直接加入test数组中。
+    testArr.value.push(tableData.value[row.index - 1]);
+  }
+
+  if (typeof row.index === "string") {
+    // string是文件夹中的题目，获得位置再添加。
+    let indexArr = row.index.split('-')
+    // 一元加号运算符:  +indexArr[0]  可以使indexArr[0]的类型转化为number
+    testArr.value.push(tableData.value[+indexArr[0] - 1].childrenList[+indexArr[1] - 1])
+  }
+  console.log(testArr.value)
+}
+const cellStyle = (row) => {
+  if (row.foldDesc) {
+    return
+  }
+}
+
 
 onBeforeUnmount(() =>{
   window.removeEventListener('resize', handleResize)
-});
-creatEventListener();
-getFolder();
-// 通过异步的await保证先获取课程再获取题目
+});// 组件销毁前解除监听释放内存
+
+creatEventListener(); // 页面创建时开始监听页面高度
+
+// 通过异步的await保证先获取课程再获取文件夹和题目
 (async () => {
   try {
     await getCourse();
+    await getFolder()
     await loadData();
   } catch (e) {
     console.log('初始化课程、题目数据错误', e)
@@ -216,9 +396,10 @@ getFolder();
 </script>
 
 <template>
-  <div class="mb-4">
-    <el-button type="primary" round @click="dialogFormVisible = true">创建文件夹</el-button>
-    <el-button round icon="Delete" @click="deleteEvent">批量删除</el-button>
+  <div class="header_div">
+    <el-button type="primary" round @click="folderDialogVisible = true">创建文件夹</el-button>
+    <el-button type="primary" round @click="folderDialogVisible = true">创建试题</el-button>
+    <el-button  round icon="Delete" @click="deleteEvent">批量删除</el-button>
     <el-dropdown>
       <el-button round>
         {{ currentCourse.courseName }}
@@ -232,36 +413,46 @@ getFolder();
         </el-dropdown-menu>
       </template>
     </el-dropdown>
+    <el-col :span="6">
+      <el-statistic title="已选题目" :value="multipleSelection.questionList.length" />
+    </el-col>
+    <el-button type="primary" @click="testFormVisible = true"
+    >创建试卷
+    </el-button>
   </div>
   <div>
-    <el-table :data="tableData"
+    <el-table :data="filterTableData"
+              :ref="tableRef"
+              stripe
+              border
+              :cell-style="cellStyle"
               style="width: 100%"
               table-layout="auto"
               @selection-change="handleSelectionChange"
-              :header-cell-style="{textAlign: 'center'}"
-              :cell-style="{ textAlign: 'center' }"
+              v-model:aria-selected="multipleSelection"
               empty-text="没有数据"
               :max-height="fullHeight"
               lazy
               row-key="index"
-              :load
-              :tree-props="{ children: 'children', hasChildren: 'hasChildren' }">
+              :load="lazyLoadQuestion"
+              :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+              >
       <el-table-column fixed type="selection" width='40' />
-      <el-table-column fixed type="index" width="60" label="序号"/>
-      <el-table-column prop="description" label="文件夹/题目" show-overflow-tooltip width="auto">
+      <el-table-column fixed type="index" width="auto"/>
+      <el-table-column prop="description" label="文件夹/题目"  show-overflow-tooltip min-width="600">
         <template v-slot="scope">
-          <el-button link type="primary" @click="handleClick(scope.row)">{{ scope.row.description}}</el-button>
+          <el-button link type="text" @click="handleClick(scope.row)">{{ scope.row.description}}</el-button>
         </template>
       </el-table-column>
-      <el-table-column prop="quesCourStr" label="课程" />
-      <el-table-column prop="types" label="题型" />
+      <el-table-column prop="quesCourStr" label="课程"></el-table-column>
+      <el-table-column prop="types" label="题型" sortable/>
       <el-table-column prop="hard" sortable label="难易" />
-      <el-table-column fixed="right">
+      <el-table-column fixed="right" min-width="160">
         <template #header>
           <el-input v-model="search" size="small" placeholder="输入题目关键字" />
         </template>
         <template  #default="{ row, $index }">
-<!--          <el-button link type="primary" size="small" @click="handleClick(row)">编辑</el-button>-->
+          <el-button link type="primary" size="small" @click="addTest(row)" v-if="!row.hasChildren && row.description">加入试卷</el-button>
           <el-popconfirm
               width="220"
               confirm-button-text="确定"
@@ -295,7 +486,7 @@ getFolder();
       />
     </div>
   </div>
-  <el-dialog v-model="dialogFormVisible"
+  <el-dialog v-model="folderDialogVisible"
              title="创建文件夹"
              width="500"
              align-center
@@ -305,6 +496,9 @@ getFolder();
       <el-form-item label="文件夹名" :label-width="150">
         <el-input v-model="dialogForm.name" autocomplete="off" />
       </el-form-item>
+      <el-form-item label="描述" :label-width="150">
+        <el-input v-model="dialogForm.desc" autocomplete="off" />
+      </el-form-item>
       <el-form-item label="课程" :label-width="150">
         <el-select v-model="dialogForm.courseId" placeholder="选择课程">
           <el-option v-for="item in courseArr" :label="item.name" :key="item.id" :value="item.id" />
@@ -313,12 +507,97 @@ getFolder();
     </el-form>
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="dialogFormVisible = false">取消</el-button>
-        <el-button type="primary" @click="dialogFormVisible = false;">
+        <el-button @click="folderDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="folderDialogVisible = false; creatFolder()">
           创建
         </el-button>
       </div>
     </template>
+  </el-dialog>
+  <el-dialog v-model="testFormVisible"
+             title="创建试卷"
+             width="800"
+             :close-on-click-modal="false"
+             @closed="() =>  dialogForm = {}">
+    <el-form
+        style="max-width: 600px"
+        :model="testForm"
+        :rules="rules"
+        label-width="auto"
+        class="demo-ruleForm"
+        :size="'default'"
+        status-icon
+    >
+      <el-form-item label="试卷科目" prop="subject">
+        <el-input v-model="testForm.subject" />
+      </el-form-item>
+      <el-form-item label="班级" prop="class">
+        <el-select v-model="testForm.class" placeholder="选择班级">
+          <el-option label="计算机21-3" value="计算机21-3" />
+          <el-option label="计算机21-4" value="计算机21-4" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="考试时长" prop="time">
+        <el-input v-model="testForm.time" />
+      </el-form-item>
+      <el-form-item label="学年" required>
+        <el-col :span="11">
+          <el-form-item prop="date1">
+            <el-date-picker
+                v-model="testForm.yearStart"
+                type="date"
+                label="选择起始年份"
+                placeholder="选择起始年份"
+                style="width: 100%"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col class="text-center" :span="2">
+          <span class="text-gray-500">-</span>
+        </el-col>
+        <el-col :span="11">
+          <el-form-item prop="date2">
+            <el-time-picker
+                v-model="testForm.yearEnd"
+                label="选择结束年份"
+                placeholder="选择结束年份"
+                style="width: 100%"
+            />
+          </el-form-item>
+        </el-col>
+      </el-form-item>
+      <el-form-item label="学期" prop="term">
+        <el-input v-model="testForm.term" />
+      </el-form-item>
+      <el-form-item label="开/闭卷" prop="open">
+        <el-segmented v-model="testForm.open" :options="openOptions" />
+      </el-form-item>
+      <el-form-item label="考试类型" prop="exam">
+        <el-checkbox-group v-model="testForm.exam">
+          <el-checkbox value="考试" name="exam">
+            考试
+          </el-checkbox>
+          <el-checkbox value="考察" name="exam">
+            考查
+          </el-checkbox>
+        </el-checkbox-group>
+      </el-form-item>
+      <el-form-item label="Resources" prop="resource">
+        <el-radio-group v-model="testForm.resource">
+          <el-radio value="Sponsorship">Sponsorship</el-radio>
+          <el-radio value="Venue">Venue</el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item label="Activity form" prop="desc">
+        <el-input v-model="testForm.desc" type="textarea" />
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="testFormVisible = false">
+          取消
+        </el-button>
+        <el-button @click="testFormVisible = false">创建</el-button>
+      </el-form-item>
+    </el-form>
   </el-dialog>
 </template>
 
@@ -337,5 +616,24 @@ getFolder();
   justify-content: center;
   align-items: center;
   height: 40px;
+}
+/deep/ .el-table__placeholder {
+  display: none
+}
+.header_div{
+  height: 50px;
+  display: flex;
+  align-items: center;
+}
+.header_div > button {
+  margin-right: 10px;
+}
+.el-col {
+  margin-left: auto;
+  text-align: center;
+}
+/deep/ .el-statistic {
+  width: 80px;
+  margin-left: auto;
 }
 </style>

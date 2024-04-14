@@ -1,57 +1,32 @@
 <script setup>
 
-const menuData = [
-  {
-    path: '/home',
-    name: 'home',
-    label: '首页',
-    icon: 'view',
-    url: 'Home/Home'
-  },
-  {
-    path: '/course',
-    name: 'course',
-    label: '课程管理',
-    icon: 'reading',
-    url: 'Course/Course'
-  },
-  {
-    path: '/questions',
-    name: 'questions',
-    label: '试题管理',
-    icon: 'document-copy',
-    url: 'Questions/Questions'
-  },
-  {
-    path: '/folder',
-    name: 'folder',
-    label: '文件夹',
-    icon: 'FolderOpened',
-    url: 'Questions/Questions'
-  },
-  {
-    path: '/central',
-    name: 'central',
-    label: '个人中心',
-    icon: 'user',
-    url: 'Central/Central'
+import router from "@/router/router";
+import {ref} from "vue";
+
+const menuData = ref([
+])
+const addLabel = () => {
+  const tableData = ref(router.getRoutes().filter((item) => item.meta.label).map((item) => item))
+  for (let i = 0; i < tableData.value.length; i++) {
+    menuData.value[i] = tableData.value[i].meta
   }
-]
+}
+addLabel()
 </script>
 
 <template>
   <el-row class="tac">
     <el-col :span="24">
       <el-menu
-          default-active="2"
+          default-active="1"
           class="el-menu-vertical-demo"
           background-color="#545c64"
           text-color="#fff"
           active-text-color="#ffd04b"
-          router :default-openeds="['0', '1']"
+          router
       >
         <h3>试题管理系统</h3>
-        <el-menu-item v-for="item in menuData" :key="item.name" :index="item.path">
+        <el-menu-item v-for="item in menuData" :key="item.label" :index="item.path">
           <el-icon>
             <component :is="item.icon"></component>
           </el-icon>
