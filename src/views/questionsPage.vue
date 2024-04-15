@@ -424,10 +424,10 @@ const creatTest = () => {
     })
   }
   console.log(list)
-  // axios.post('/api/questions/buildTest', JSON.parse(JSON.stringify({
-  //   title: testForm.value,
-  //   list: list
-  // })));
+  axios.post('/api/questions/buildTest', JSON.parse(JSON.stringify({
+    title: testForm.value,
+    list: list
+  })));
 }// 生成试卷
 const clearTest = () => {
   testArr.value.forEach((item) => {
@@ -613,6 +613,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
                 type="year"
                 label="选择起始年份"
                 placeholder="选择起始年份"
+                value-format="yyyy"
                 style="width: 100%"
             />
           </el-form-item>
@@ -627,6 +628,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
                 type="year"
                 label="选择结束年份"
                 placeholder="选择结束年份"
+                value-format="yyyy"
                 style="width: 100%"
             />
           </el-form-item>
