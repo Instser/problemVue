@@ -11,6 +11,8 @@ import 'tinymce/icons/default'
 import {ref} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
+import {ElNotification} from "element-plus";
+import router from "@/router/router";
 
 const init = {
   selector: 'textarea',
@@ -53,7 +55,18 @@ const addQuestion = () => {
     axios.post('/api/questions/update', JSON.parse(JSON.stringify(
         questionForm.value
     ))).then(res => {
-      console.log(res.data)
+      if (res.data.code === 200) {
+        ElNotification({
+          title: '添加成功',
+          type: 'success'
+        });
+        router.push('/questions');
+      } else {
+        ElNotification({
+          title: '添加失败',
+          type: 'error'
+        });
+      }
     });
     console.log('update')
   } else {

@@ -1,11 +1,10 @@
 <script setup>
-import {computed, onBeforeUnmount, ref} from "vue";
+import {onBeforeUnmount, ref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
 import {ArrowDown} from "@element-plus/icons-vue";
 import {ElNotification} from "element-plus";
 import {storage} from "@/storage/storage";
-import draggable from 'vue-draggable-next'
 
 const tableData = ref([])
 const pageParams = ref({
@@ -131,6 +130,13 @@ const rules = {
     { required: true, message: 'Please input activity form', trigger: 'blur' },
   ],
 }
+const typeDescArr = ref({
+  selectDesc: '',
+  gapDesc: '',
+  answerDesc: '',
+  proveDesc: ''
+})
+const folderEditVisible = ref()
 
 const getCourse = async () => {
   await axios.get('api/course/getAll').then(res => {
@@ -216,10 +222,11 @@ const freshTable = () => {
   loadData()
 }  // 刷新table内容
 const handleClick = (row) => {
-  // 判断是题目还是文件夹
+  // 判断是题目还是文件夹,文件夹就打开文件夹编辑。题目就跳转到edit
   if (row.foldDesc) {
     // 是文件夹就传入id进行懒加载子数据
-    lazyLoadQuestion(row);
+    // lazyLoadQuestion(row);
+
   } else {
     // 点击编辑后，携带获取到的题目id跳转到编辑页面
     router.push({path: '/edit', query: {id : row.id}})
@@ -243,9 +250,6 @@ const handleSelectionChange = (val) => {
   console.log("多选列表")
   console.log(multipleSelection.value)
 }//多选逻辑
-const cancelEvent = () => {
-  console.log(multipleSelection.value.folderList.map(folder => folder.id).join(','))
-}
 const deleteEvent = () => {
   const folderIdArr = ref(multipleSelection.value.folderList.map(folder => folder.id))
   const questionIdArr = ref(multipleSelection.value.questionList.map(question => question.id))
@@ -256,18 +260,29 @@ const deleteEvent = () => {
       params: {
         id: folderIdArr.value.join(',')
       }
-    }).then(() => {
-      for (let i = 0; i < folderIdArr.value.length; i++) {
-        const dataIndex = tableData.value.findIndex(item => item.id === folderIdArr.value[i])
-        console.log(dataIndex)
-        // 过滤到相同id的题目，只删除文件夹
-        if (dataIndex !== -1 && tableData.value[dataIndex].name) {
-          tableData.value.splice(dataIndex, 1)
-          count.value--
+    }).then(res => {
+      if (res.data.code === 200) {
+        for (let i = 0; i < folderIdArr.value.length; i++) {
+          const dataIndex = tableData.value.findIndex(item => item.id === folderIdArr.value[i])
+          console.log(dataIndex)
+          // 过滤到相同id的题目，只删除文件夹
+          if (dataIndex !== -1 && tableData.value[dataIndex].name) {
+            tableData.value.splice(dataIndex, 1)
+            count.value--
+          }
         }
+        ElNotification({
+          title: '文件夹删除成功',
+          type: 'success'
+        });
+        // 重置文件夹多选列表
+        multipleSelection.value.folderList = [];
+      } else {
+        ElNotification({
+          title: '文件夹删除失败',
+          type: 'error'
+        });
       }
-      // 重置文件夹多选列表
-      multipleSelection.value.folderList = []
     })
   }
   if (questionIdArr.value[0]) {
@@ -276,19 +291,30 @@ const deleteEvent = () => {
             id: questionIdArr.value.join(',')
           }
         }
-    ).then(() => {
+    ).then(res => {
       // 通过table索引移除
-      for (let i = 0; i < questionIdArr.value.length; i++) {
-        const dataIndex = tableData.value.findIndex(item => item.id === questionIdArr.value[i])
-        console.log(dataIndex)
-        // 过滤到相同id的文件夹，只删除题目
-        if (dataIndex !== -1 && !tableData.value[dataIndex].name) {
-          tableData.value.splice(dataIndex, 1)
-          count.value--
+      if (res.data.code === 200) {
+        for (let i = 0; i < questionIdArr.value.length; i++) {
+          const dataIndex = tableData.value.findIndex(item => item.id === questionIdArr.value[i])
+          console.log(dataIndex)
+          // 过滤到相同id的文件夹，只删除题目
+          if (dataIndex !== -1 && !tableData.value[dataIndex].name) {
+            tableData.value.splice(dataIndex, 1)
+            count.value--
+          }
         }
+        ElNotification({
+          title: '题目删除成功',
+          type: 'success'
+        });
+      } else {
+        ElNotification({
+          title: '题目删除失败',
+          type: 'error'
+        })
       }
       // 重置id列表
-      multipleSelection.value.questionList = []
+      multipleSelection.value.questionList = [];
     })
   }
   // 操作完成后清空列表
@@ -507,7 +533,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
       <el-table-column fixed type="index" width="auto"/>
       <el-table-column prop="description" label="文件夹/题目"  show-overflow-tooltip min-width="600">
         <template v-slot="scope">
-          <el-button link type="text" @click="handleClick(scope.row)">{{ scope.row.description}}</el-button>
+          <span>{{ scope.row.description}}</span>
         </template>
       </el-table-column>
       <el-table-column prop="quesCourStr" label="课程"></el-table-column>
@@ -518,21 +544,9 @@ creatEventListener(); // 页面创建时开始监听页面高度
           <el-input v-model="search" size="small" placeholder="输入题目关键字" />
         </template>
         <template  #default="{ row, $index }">
+          <el-button link type="primary" size="small" @click="handleClick(row)">编辑</el-button>
           <el-button link type="primary" size="small" @click="addTest(row)" v-if="!row.hasChildren && row.description && !row.inTest">加入试卷</el-button>
           <el-button link type="primary" size="small" @click="removeTest(row)" v-if="!row.hasChildren && row.description && row.inTest === true">移出试卷</el-button>
-          <el-popconfirm
-              width="220"
-              confirm-button-text="确定"
-              cancel-button-text="取消"
-              icon-color="#626AEF"
-              title="您确定要删除吗？"
-              @confirm="deleteEvent(row, $index)"
-              @cancel="cancelEvent"
-          >
-            <template #reference>
-              <el-button link type="primary" size="small">删除</el-button>
-            </template>
-          </el-popconfirm>
         </template>
       </el-table-column>
       <template v-slot:append>
@@ -667,6 +681,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         <el-input v-model="testForm.shenPi" placeholder="输入审批老师" clearable />
       </el-form-item>
       <el-form-item label="选择题" prop="question1" v-if="testArr.findIndex(item => item.types === '选择题') !== -1">
+        <el-input v-model="typeDescArr.selectDesc" placeholder="输入选择题描述，如每题3分" clearable />
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '选择题')"
@@ -685,6 +700,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </span>
       </el-form-item>
       <el-form-item label="填空题" prop="question1" v-if="testArr.findIndex(item => item.types === '填空题') !== -1">
+        <el-input v-model="typeDescArr.gapDesc" placeholder="输入填空题描述，如每题3分" clearable />
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '填空题')"
@@ -703,6 +719,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </span>
       </el-form-item>
       <el-form-item label="简答题" prop="question1" v-if="testArr.findIndex(item => item.types === '简答题') !== -1">
+        <el-input v-model="typeDescArr.answerDesc" placeholder="输入简答题描述，如每题15分" clearable />
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '简答题')"
@@ -721,6 +738,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </span>
       </el-form-item>
       <el-form-item label="证明题" prop="question1" v-if="testArr.findIndex(item => item.types === '证明题') !== -1">
+        <el-input v-model="typeDescArr.proveDesc" placeholder="输入证明题描述，如每题20分" clearable />
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '证明题')"

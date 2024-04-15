@@ -5,9 +5,28 @@ import router from "@/router/router";
 import {ElNotification} from "element-plus";
 import axios from "axios";
 
-const visible = ref(false)
-const test = () => {
-  console.log(visible.value)
+const formVisible = ref(false)
+const formTable = ref({
+  oldPsw: '',
+  newPsw: ''
+})
+const updatePsw = () => {
+  axios.post('/api/user/updatePwd',JSON.parse(JSON.stringify({
+    mapKey1: formTable.value.oldPsw,
+    mapKey2: formTable.value.newPsw
+  }))).then(res => {
+    if (res.data.code === 200) {
+      ElNotification({
+        title: '修改成功',
+        type: 'success'
+      });
+    } else {
+      ElNotification({
+        title: '修改失败',
+        type: 'error'
+      })
+    }
+  })
 }
 const getIsAuthenticated = () => {
   console.log(storage.get('isAuthenticated'))
@@ -25,16 +44,30 @@ const logOff = () => {
 </script>
 
 <template>
-  <el-popover :visible="visible" placement="top" :width="160">
-    <p>确定删除吗？</p>
-    <div style="text-align: right; margin: 0">
-      <el-button size="small" text @click="visible = false">取消</el-button>
-      <el-button size="small" type="primary" @click="visible = false">确定</el-button>
-    </div>
-    <template #reference>
-      <el-button @click="visible = true;test()" >删除</el-button>
+  <el-dialog v-model="formVisible"
+             title="修改密码"
+             width="500"
+             align-center
+             :close-on-click-modal="false"
+             @closed="() =>  formTable = {}">
+    <el-form :model="formTable">
+      <el-form-item label="旧密码" :label-width="150">
+        <el-input v-model="formTable.oldPsw" autocomplete="off" />
+      </el-form-item>
+      <el-form-item label="新密码" :label-width="150">
+        <el-input v-model="formTable.newPsw" autocomplete="off" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="formVisible = false">取消</el-button>
+        <el-button type="primary" @click="formVisible = false; updatePsw()">
+          提交
+        </el-button>
+      </div>
     </template>
-  </el-popover>
+  </el-dialog>
+  <el-button @click="formVisible = true" >修改密码</el-button>
   <el-button @click="getIsAuthenticated">查看登录状态</el-button>
   <el-button @click="logOff">退出登录</el-button>
 </template>

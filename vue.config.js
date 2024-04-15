@@ -19,6 +19,7 @@ module.exports = defineConfig({
     proxy:{
       '/api':{
         target:'http://localhost:8888',
+        // target:'http://8.210.230.249:8888',
         changeOrigin:true, // 是否允许跨域请求
         pathRewrite: {
           '^/api': ''

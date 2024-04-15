@@ -1,21 +1,24 @@
 <template>
   <div class="login-container">
-    <el-form ref="formRef" :model="loginForm" :rules="loginRules" label-position="top">
-      <el-form-item label="用户名" prop="username">
-        <el-input v-model="loginForm.username"></el-input>
-      </el-form-item>
-      <el-form-item label="密码" prop="password" @keydown.enter="login">
-        <el-input type="password" v-model="loginForm.password"></el-input>
-      </el-form-item>
-      <el-form-item label="验证码" prop="code" @keydown.enter="login">
-        <el-input type="text" v-model="loginForm.code"></el-input>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" @click="login">登录</el-button>
-        <el-checkbox v-model=rememberMe value="1" label="记住账号" />
-      </el-form-item>
-      <img :src="decodePwd" @click="getVcimg" alt="加载失败" />
-    </el-form>
+    <div class="form-container">
+      <h1>欢迎使用</h1>
+      <el-form ref="formRef" :model="loginForm" :rules="loginRules" label-position="top">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="loginForm.username"></el-input>
+        </el-form-item>
+        <el-form-item label="密码" prop="password" @keydown.enter="login">
+          <el-input type="password" v-model="loginForm.password"></el-input>
+        </el-form-item>
+        <el-form-item label="验证码" prop="code" @keydown.enter="login">
+          <el-input type="text" v-model="loginForm.code"></el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="login">登录</el-button>
+          <el-checkbox v-model=rememberMe value="1" label="记住账号" />
+        </el-form-item>
+        <img :src="decodePwd" @click="getVcimg" alt="加载失败" />
+      </el-form>
+    </div>
   </div>
 </template>
 
@@ -88,5 +91,28 @@ getVcimg()
   justify-content: center;
   align-items: center;
   height: 100vh;
+}
+.login-container {
+  background-image: url('../../static/image/guangyou1.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-position: center center;
+  height: 100vh;
+  width: 100vw;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.form-container {
+  background-color: rgba(255, 255, 255, 0.5);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: auto;
+}
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
 }
 </style>
