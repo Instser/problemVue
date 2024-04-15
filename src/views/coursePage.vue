@@ -196,7 +196,7 @@ onMounted(() => {
               @keyup.enter="handleInputConfirm"
           />
           <el-button v-else class="button-new-tag" size="small" @click="showInput">
-            + New Tag
+            + 添加老师
           </el-button>
         </el-form-item>
       </el-form>

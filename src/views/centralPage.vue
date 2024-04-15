@@ -28,9 +28,6 @@ const updatePsw = () => {
     }
   })
 }
-const getIsAuthenticated = () => {
-  console.log(storage.get('isAuthenticated'))
-}
 const logOff = () => {
   axios.get('/api/logout')
   storage.remove('isAuthenticated')
@@ -68,7 +65,6 @@ const logOff = () => {
     </template>
   </el-dialog>
   <el-button @click="formVisible = true" >修改密码</el-button>
-  <el-button @click="getIsAuthenticated">查看登录状态</el-button>
   <el-button @click="logOff">退出登录</el-button>
 </template>
 
