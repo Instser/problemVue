@@ -131,9 +131,6 @@ const rules = {
     { required: true, message: 'Please input activity form', trigger: 'blur' },
   ],
 }
-const quesOne = computed(() => {
-  return testArr.value.filter(item => item.types === '选择题');
-})
 
 const getCourse = async () => {
   await axios.get('api/course/getAll').then(res => {
@@ -621,7 +618,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
                 type="year"
                 label="选择起始年份"
                 placeholder="选择起始年份"
-                value-format="yyyy"
+                value-format="YYYY"
                 style="width: 100%"
             />
           </el-form-item>
@@ -636,7 +633,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
                 type="year"
                 label="选择结束年份"
                 placeholder="选择结束年份"
-                value-format="yyyy"
+                value-format="YYYY"
                 style="width: 100%"
             />
           </el-form-item>
@@ -705,7 +702,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
           </el-tooltip>
         </span>
       </el-form-item>
-      <el-form-item label="计算题" prop="question1" v-if="testArr.findIndex(item => item.types === '简答题') !== -1">
+      <el-form-item label="简答题" prop="question1" v-if="testArr.findIndex(item => item.types === '简答题') !== -1">
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '简答题')"

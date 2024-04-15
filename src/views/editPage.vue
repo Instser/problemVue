@@ -130,7 +130,7 @@ getQuestion()
       <el-input
           v-model="questionForm.typeId"
           style="width: 240px"
-          placeholder="类型id">
+          placeholder="实际题型">
       </el-input>
     </div>
   </div>
