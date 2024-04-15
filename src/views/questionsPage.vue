@@ -670,39 +670,76 @@ creatEventListener(); // 页面创建时开始监听页面高度
         <el-input v-model="testForm.shenPi" placeholder="输入审批老师" clearable />
       </el-form-item>
       <el-form-item label="选择题" prop="question1" v-if="testArr.findIndex(item => item.types === '选择题') !== -1">
-        <draggable
-            :list="quesOne"
-            :disabled="true"
-            @start="onStart"
-            ghost-class="ghost"
-            chosen-class="chosenClass"
-            animation="300"
-            @end="onEnd"
+        <span
+            style="margin: 0 5px 0 0"
+            v-for="(item, index) in testArr.filter(q => q.types === '选择题')"
+            :key="item.id"
         >
-          <span
-              style="margin: 0 5px 0 0"
-              v-for="(item, index) in quesOne"
-              :key="item.id"
-          >
+          <el-tooltip :content="item.description" placement="top">
             <el-tag
                 :closable="true"
                 :disable-transitions="false"
                 @close="removeTest(item)"
                 :type="'success'"
             >
-              {{ index }}. {{ item.description }}
-            </el-tag>
-          </span>
-        </draggable>
+            {{ index + 1 }}. {{ item.description }}
+          </el-tag>
+          </el-tooltip>
+        </span>
       </el-form-item>
       <el-form-item label="填空题" prop="question1" v-if="testArr.findIndex(item => item.types === '填空题') !== -1">
-        <p>2</p>
+        <span
+            style="margin: 0 5px 0 0"
+            v-for="(item, index) in testArr.filter(q => q.types === '填空题')"
+            :key="item.id"
+        >
+          <el-tooltip :content="item.description" placement="top">
+            <el-tag
+                :closable="true"
+                :disable-transitions="false"
+                @close="removeTest(item)"
+                :type="'success'"
+            >
+            {{ index + 1 }}. {{ item.description }}
+          </el-tag>
+          </el-tooltip>
+        </span>
       </el-form-item>
       <el-form-item label="计算题" prop="question1" v-if="testArr.findIndex(item => item.types === '简答题') !== -1">
-        <p>3</p>
+        <span
+            style="margin: 0 5px 0 0"
+            v-for="(item, index) in testArr.filter(q => q.types === '简答题')"
+            :key="item.id"
+        >
+          <el-tooltip :content="item.description" placement="top">
+            <el-tag
+                :closable="true"
+                :disable-transitions="false"
+                @close="removeTest(item)"
+                :type="'success'"
+            >
+            {{ index + 1 }}. {{ item.description }}
+          </el-tag>
+          </el-tooltip>
+        </span>
       </el-form-item>
       <el-form-item label="证明题" prop="question1" v-if="testArr.findIndex(item => item.types === '证明题') !== -1">
-        <p>4</p>
+        <span
+            style="margin: 0 5px 0 0"
+            v-for="(item, index) in testArr.filter(q => q.types === '证明题')"
+            :key="item.id"
+        >
+          <el-tooltip :content="item.description" placement="top">
+            <el-tag
+                :closable="true"
+                :disable-transitions="false"
+                @close="removeTest(item)"
+                :type="'success'"
+            >
+            {{ index + 1 }}. {{ item.description }}
+          </el-tag>
+          </el-tooltip>
+        </span>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="testFormVisible = false; creatTest()">
@@ -754,5 +791,12 @@ creatEventListener(); // 页面创建时开始监听页面高度
 }
 .chosenClass {
   background-color: #f1f1f1;
+}
+.el-tag {
+  display: inline-block;
+  max-width: 150px; /* 可以根据实际需要调整宽度 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
