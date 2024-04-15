@@ -27,7 +27,7 @@ const currentCourse = ref({
 })
 const search = ref('')
 const isLoading = ref(false)
-const fullHeight = ref(document.documentElement.clientHeight - 97)
+const fullHeight = ref(document.documentElement.clientHeight - 110)
 const loading = ref(false)
 const folderDialogVisible = ref(false)
 const dialogForm = ref({
@@ -317,7 +317,7 @@ const creatEventListener = () => {
   window.addEventListener('resize', handleResize)
 } //设置页面大小监听器
 const handleResize= () => {
-  fullHeight.value = document.documentElement.clientHeight - 97
+  fullHeight.value = document.documentElement.clientHeight - 110
 } //获取窗口高度
 const lazyLoadQuestion = (row, treeNode, resolve) => {
   console.log(row.id)
@@ -389,16 +389,45 @@ const removeTest = (row) => {
   console.log(testArr.value)
 } // 将不需要的试题移除组卷列表
 const creatTest = () => {
-  axios.post('/api/questions/buildTest', JSON.parse(JSON.stringify({
-    title: testForm.value,
-    list: [
-      {
-        typeName: '选择题',
-        "typeDesc": "单项选择题，每个题目只有一个正确选项，共10题，每题3分，共30分。",
-        "quesId": [1,2,3,4,5]
-      }
-    ]
-  })))
+  //  根据testArr中的题目情况，像请求参数中添加题目。
+  let list = []
+  if (testArr.value.findIndex(item => item.types === '选择题') !== -1) {
+    console.log('push11')
+    list.push({
+      typeName: '选择题',
+      "typeDesc": "单项选择题，每个题目只有一个正确选项，共10题，每题3分，共30分。",
+      "quesId": testArr.value.filter(item => item.types === '选择题').map(item => item.id)
+    })
+  }
+  if (testArr.value.findIndex(item => item.types === '填空题') !== -1) {
+    console.log('push22')
+    list.push({
+      "typeName": "填空题",
+      "typeDesc": "共5题，每题5分，共25分。",
+      "quesId": testArr.value.filter(item => item.types === '填空题').map(item => item.id)
+    })
+  }
+  if (testArr.value.findIndex(item => item.types === '简答题') !== -1) {
+    console.log('push33')
+    list.push({
+      "typeName": "计算题",
+      "typeDesc": "请写明必要的计算步骤，共3题，每题10分，共30分。",
+      "quesId": testArr.value.filter(item => item.types === '简答题').map(item => item.id)
+    })
+  }
+  if (testArr.value.findIndex(item => item.types === '证明题') !== -1) {
+    console.log('push44')
+    list.push({
+      "typeName": "证明题",
+      "typeDesc": "请写明必要的证明步骤，共1题，每题15分，共15分。",
+      "quesId": testArr.value.filter(item => item.types === '证明题').map(item => item.id)
+    })
+  }
+  console.log(list)
+  // axios.post('/api/questions/buildTest', JSON.parse(JSON.stringify({
+  //   title: testForm.value,
+  //   list: list
+  // })));
 }// 生成试卷
 const clearTest = () => {
   testArr.value.forEach((item) => {
@@ -630,16 +659,16 @@ creatEventListener(); // 页面创建时开始监听页面高度
       <el-form-item label="审批老师" prop="shenPi">
         <el-input v-model="testForm.shenPi" placeholder="输入审批老师" clearable />
       </el-form-item>
-      <el-form-item label="选择题" prop="question1" v-if="testArr.findIndex(item => item.typeName === '1') !== -1">
+      <el-form-item label="选择题" prop="question1" v-if="testArr.findIndex(item => item.types === '选择题') !== -1">
         <p>1</p>
       </el-form-item>
-      <el-form-item label="填空题" prop="question1" v-if="testArr.findIndex(item => item.typeName === '2') !== -1">
+      <el-form-item label="填空题" prop="question1" v-if="testArr.findIndex(item => item.types === '填空题') !== -1">
         <p>2</p>
       </el-form-item>
-      <el-form-item label="计算题" prop="question1" v-if="testArr.findIndex(item => item.typeName === '3') !== -1">
+      <el-form-item label="计算题" prop="question1" v-if="testArr.findIndex(item => item.types === '简答题') !== -1">
         <p>3</p>
       </el-form-item>
-      <el-form-item label="证明题" prop="question1" v-if="testArr.findIndex(item => item.typeName === '4') !== -1">
+      <el-form-item label="证明题" prop="question1" v-if="testArr.findIndex(item => item.types === '证明题') !== -1">
         <p>4</p>
       </el-form-item>
       <el-form-item>
