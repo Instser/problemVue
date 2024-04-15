@@ -19,6 +19,10 @@ const dialogForm = ref({
   id: ''
 })
 const course1DialogVisible = ref(false)
+const teacherDialogVisible =ref(false)
+const teacherForm = ref([])
+const inputVisible =  ref(false)
+const inputValue = ref('')
 
 const getPage = () => {
   axios.get('/api/course/page', {
@@ -105,6 +109,28 @@ const primaryCourse = () => {
     console.log(res)
   })
 }
+const editTeacher = (row) => {
+  if (row.teaNamesStr)
+    teacherForm.value = row.teaNamesStr.split(',')
+}
+const handleInputConfirm = () => {
+  if (inputValue.value) {
+    teacherForm.value.push(inputValue.value)
+  }
+  inputVisible.value = false
+  inputValue.value = ''
+}
+const showInput = () => {
+  inputVisible.value = true
+}
+const removeTeacher = (teacher) => {
+  // axios.post('/api/teaCour/quitCourse',JSON.parse(JSON.stringify({
+  //   userId: '',
+  //   courseId: ''
+  // })))
+  teacherForm.value = teacherForm.value.filter(item => item !== teacher);
+
+}
 onMounted(() => {
     getPage()
   })
@@ -137,6 +163,43 @@ onMounted(() => {
           </el-button>
         </div>
       </template>
+    </el-dialog>
+    <el-dialog v-model="teacherDialogVisible"
+               title="管理任课老师"
+               width="500"
+               align-center
+               :close-on-click-modal="false"
+               @closed="() =>  teacherForm = []">
+      <el-form :model="teacherForm">
+        <el-form-item label="任课老师">
+          <span
+              style="margin: 0 5px 0 0"
+              v-for="(item, index) in teacherForm"
+              :key="item.id"
+          >
+            <el-tooltip :content="item" placement="top">
+              <el-tag
+                  :closable="true"
+                  :disable-transitions="false"
+                  @close="removeTeacher(item)"
+                  :type="'success'"
+            >
+             {{ index + 1 }}. {{ item }}
+            </el-tag>
+            </el-tooltip>
+          </span>
+          <el-input
+              v-if="inputVisible"
+              v-model="inputValue"
+              class="w-20"
+              size="small"
+              @keyup.enter="handleInputConfirm"
+          />
+          <el-button v-else class="button-new-tag" size="small" @click="showInput">
+            + New Tag
+          </el-button>
+        </el-form-item>
+      </el-form>
     </el-dialog>
     <el-dialog v-model="course1DialogVisible"
                title="修改课程"
@@ -200,6 +263,7 @@ onMounted(() => {
         <template v-slot="scope">
           <el-button link @click="courseDelete(scope.row)" type="primary" size="small">删除</el-button>
           <el-button link type="primary" size="small" @click="editCourse(scope.row);course1DialogVisible = true">编辑</el-button>
+          <el-button link type="primary" size="small" @click="editTeacher(scope.row);teacherDialogVisible = true">任课老师</el-button>
         </template>
       </el-table-column>
       <template v-slot:append>
@@ -236,5 +300,24 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   height: 40px;
+}
+/deep/ .el-tag {
+  display: flex; /* 使用 flex 布局 */
+  align-items: center; /* 垂直居中子元素 */
+  justify-content: space-between; /* 子元素间隔均匀 */
+  max-width: 150px; /* 限制最大宽度 */
+  overflow: hidden; /* 隐藏溢出内容 */
+}
+
+/deep/ .el-tag .el-tag__content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-grow: 1; /* 允许文本内容区域自动填充空间 */
+}
+
+/deep/ .el-tag .el-tag__close {
+  flex-shrink: 0; /* 防止关闭按钮压缩 */
+  margin-left: 8px; /* 为关闭按钮和文本提供一些间隔 */
 }
 </style>

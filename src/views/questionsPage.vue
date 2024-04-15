@@ -136,7 +136,10 @@ const typeDescArr = ref({
   answerDesc: '',
   proveDesc: ''
 })
-const folderEditVisible = ref()
+const addToFolderVisible = ref(false)
+const addToFolderForm = ref({
+  folderId: ''
+})
 
 const getCourse = async () => {
   await axios.get('api/course/getAll').then(res => {
@@ -216,6 +219,8 @@ const loadData = async () => {
 const freshTable = () => {
   // 清空table
   tableData.value = []
+  multipleSelection.value.questionList = []
+  multipleSelection.value.folderList = []
   getFolder()
   // 重置page参数
   pageParams.value.page = 1
@@ -250,6 +255,33 @@ const handleSelectionChange = (val) => {
   console.log("多选列表")
   console.log(multipleSelection.value)
 }//多选逻辑
+const addToFolder = () => {
+  const questionIdArr = ref(multipleSelection.value.questionList.map(question => question.id))
+  console.log(questionIdArr.value)
+  if (questionIdArr.value[0]) {
+    axios.post('/api/folder_ques_list/moveToFolder', '', {
+          params: {
+            folderId: addToFolderForm.value.folderId,
+            quesIds: questionIdArr.value.join(',')
+          }
+        }
+    ).then(res => {
+      if (res.data.code === 200) {
+        ElNotification({
+          title: '试题添加成功',
+          type: 'success'
+        });
+        multipleSelection.value.questionList = []
+        freshTable()
+      } else {
+        ElNotification({
+          title: '试题添加失败',
+          type: 'error'
+        })
+      }
+    })
+  }
+} //将题目批量添加至文件夹
 const deleteEvent = () => {
   const folderIdArr = ref(multipleSelection.value.folderList.map(folder => folder.id))
   const questionIdArr = ref(multipleSelection.value.questionList.map(question => question.id))
@@ -317,8 +349,6 @@ const deleteEvent = () => {
       multipleSelection.value.questionList = [];
     })
   }
-  // 操作完成后清空列表
-  tableRef.value.clearSelection()
 } //批量删除逻辑
 const courseSelect = async (courseItem) => {
   // 点击转换到其他课程
@@ -420,7 +450,7 @@ const creatTest = () => {
     console.log('push11')
     list.push({
       typeName: '选择题',
-      "typeDesc": "单项选择题，每个题目只有一个正确选项，共10题，每题3分，共30分。",
+      "typeDesc": typeDescArr.value.selectDesc,
       "quesId": testArr.value.filter(item => item.types === '选择题').map(item => item.id)
     })
   }
@@ -428,7 +458,7 @@ const creatTest = () => {
     console.log('push22')
     list.push({
       "typeName": "填空题",
-      "typeDesc": "共5题，每题5分，共25分。",
+      "typeDesc": typeDescArr.value.gapDesc,
       "quesId": testArr.value.filter(item => item.types === '填空题').map(item => item.id)
     })
   }
@@ -436,7 +466,7 @@ const creatTest = () => {
     console.log('push33')
     list.push({
       "typeName": "计算题",
-      "typeDesc": "请写明必要的计算步骤，共3题，每题10分，共30分。",
+      "typeDesc": typeDescArr.value.answerDesc,
       "quesId": testArr.value.filter(item => item.types === '简答题').map(item => item.id)
     })
   }
@@ -444,7 +474,7 @@ const creatTest = () => {
     console.log('push44')
     list.push({
       "typeName": "证明题",
-      "typeDesc": "请写明必要的证明步骤，共1题，每题15分，共15分。",
+      "typeDesc": typeDescArr.value.proveDesc,
       "quesId": testArr.value.filter(item => item.types === '证明题').map(item => item.id)
     })
   }
@@ -452,7 +482,19 @@ const creatTest = () => {
   axios.post('/api/questions/buildTest', JSON.parse(JSON.stringify({
     title: testForm.value,
     list: list
-  })));
+  }))).then(res => {
+    if (res.data.code === 200) {
+      ElNotification({
+        title: '试卷组建成功',
+        type: 'success'
+      });
+    } else {
+      ElNotification({
+        title: '试卷组建失败',
+        type: 'error'
+      })
+    }
+  });
 }// 生成试卷
 const clearTest = () => {
   testArr.value.forEach((item) => {
@@ -489,6 +531,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
   <div class="header_div">
     <el-button type="primary" round @click="folderDialogVisible = true">创建文件夹</el-button>
     <el-button type="primary" round @click="() => router.push('/edit')">创建试题</el-button>
+    <el-button  round icon="CopyDocument" @click="addToFolderVisible = true">添加试题到文件夹</el-button>
     <el-button  round icon="Delete" @click="deleteEvent">批量删除</el-button>
     <el-dropdown>
       <el-button round>
@@ -595,6 +638,28 @@ creatEventListener(); // 页面创建时开始监听页面高度
       </div>
     </template>
   </el-dialog>
+  <el-dialog v-model="addToFolderVisible"
+             title="批量添加选中的试题到文件夹"
+             width="500"
+             align-center
+             :close-on-click-modal="false"
+              @closed="() =>  addToFolderForm = {}">
+    <el-form :model="addToFolderForm">
+      <el-form-item label="文件夹" :label-width="150">
+        <el-select v-model="addToFolderForm.folderId" placeholder="选择文件夹">
+          <el-option v-for="item in folderArr" :label="item.name" :key="item.id" :value="item.id" />
+        </el-select>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="addToFolderVisible = false">取消</el-button>
+        <el-button type="primary" @click="addToFolderVisible = false; addToFolder()">
+          确定
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
   <el-dialog v-model="testFormVisible"
              title="创建试卷"
              width="800"
@@ -613,10 +678,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         <el-input v-model="testForm.subject" />
       </el-form-item>
       <el-form-item label="班级" prop="class">
-        <el-select v-model="testForm.class" placeholder="选择班级">
-          <el-option label="计算机21-3" value="计算机21-3" />
-          <el-option label="计算机21-4" value="计算机21-4" />
-        </el-select>
+        <el-input v-model="testForm.class" />
       </el-form-item>
       <el-form-item label="考试时长" prop="time">
         <el-input v-model="testForm.time" />
@@ -681,7 +743,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         <el-input v-model="testForm.shenPi" placeholder="输入审批老师" clearable />
       </el-form-item>
       <el-form-item label="选择题" prop="question1" v-if="testArr.findIndex(item => item.types === '选择题') !== -1">
-        <el-input v-model="typeDescArr.selectDesc" placeholder="输入选择题描述，如每题3分" clearable />
+        <el-input v-model="typeDescArr.selectDesc" placeholder="输入选择题描述，如：一、总共五题，每题3分" clearable />
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '选择题')"
@@ -700,7 +762,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </span>
       </el-form-item>
       <el-form-item label="填空题" prop="question1" v-if="testArr.findIndex(item => item.types === '填空题') !== -1">
-        <el-input v-model="typeDescArr.gapDesc" placeholder="输入填空题描述，如每题3分" clearable />
+        <el-input v-model="typeDescArr.gapDesc" placeholder="输入填空题描述，如：二、总共六题，每题3分" clearable />
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '填空题')"
@@ -719,7 +781,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </span>
       </el-form-item>
       <el-form-item label="简答题" prop="question1" v-if="testArr.findIndex(item => item.types === '简答题') !== -1">
-        <el-input v-model="typeDescArr.answerDesc" placeholder="输入简答题描述，如每题15分" clearable />
+        <el-input v-model="typeDescArr.answerDesc" placeholder="输入简答题描述，如：三、总共三题，每题10分" clearable />
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '简答题')"
@@ -738,7 +800,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </span>
       </el-form-item>
       <el-form-item label="证明题" prop="question1" v-if="testArr.findIndex(item => item.types === '证明题') !== -1">
-        <el-input v-model="typeDescArr.proveDesc" placeholder="输入证明题描述，如每题20分" clearable />
+        <el-input v-model="typeDescArr.proveDesc" placeholder="输入证明题描述，四、总共两题，每题10分" clearable />
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '证明题')"
@@ -807,11 +869,23 @@ creatEventListener(); // 页面创建时开始监听页面高度
 .chosenClass {
   background-color: #f1f1f1;
 }
-.el-tag {
-  display: inline-block;
-  max-width: 150px; /* 可以根据实际需要调整宽度 */
+/deep/ .el-tag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 150px;
+  overflow: hidden;
+}
+
+/deep/ .el-tag .el-tag__content {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex-grow: 1;
+}
+
+/deep/ .el-tag .el-tag__close {
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 </style>

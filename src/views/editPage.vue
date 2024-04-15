@@ -57,13 +57,13 @@ const addQuestion = () => {
     ))).then(res => {
       if (res.data.code === 200) {
         ElNotification({
-          title: '添加成功',
+          title: '修改成功',
           type: 'success'
         });
         router.push('/questions');
       } else {
         ElNotification({
-          title: '添加失败',
+          title: '修改失败',
           type: 'error'
         });
       }
@@ -75,9 +75,17 @@ const addQuestion = () => {
         questionForm.value
         // eslint-disable-next-line no-unused-vars
     ))).then(res => {
-      console.log(JSON.parse(JSON.stringify(
-          questionForm.value
-      )))
+      if (res.data.code === 200) {
+        ElNotification({
+          title: '试题添加成功',
+          type: 'success'
+        });
+      } else {
+        ElNotification({
+          title: '试题添加失败',
+          type: 'error'
+        });
+      }
     });
     console.log('add')
   }
