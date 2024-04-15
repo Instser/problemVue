@@ -17,7 +17,9 @@
     "less-loader": "^12.2.0",
     "tinymce": "^7.0.0",
     "vue": "^3.2.13",
-    "vue-router": "^4.3.0"
+    "vue-draggable-next": "^2.2.1",
+    "vue-router": "^4.3.0",
+    "vuedraggable": "^2.24.3"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

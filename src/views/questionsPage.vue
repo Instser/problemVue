@@ -5,6 +5,7 @@ import router from "@/router/router";
 import {ArrowDown} from "@element-plus/icons-vue";
 import {ElNotification} from "element-plus";
 import {storage} from "@/storage/storage";
+import draggable from 'vue-draggable-next'
 
 const tableData = ref([])
 const pageParams = ref({
@@ -36,8 +37,6 @@ const dialogForm = ref({
   courseId: ''
 })
 const tableRef = ref(null)
-const lazyLoadArr = ref([])
-const openOptions = ref(['开卷', '闭卷'])
 const testForm = ref({
   subject: '',
   class: '',
@@ -132,6 +131,9 @@ const rules = {
     { required: true, message: 'Please input activity form', trigger: 'blur' },
   ],
 }
+const quesOne = computed(() => {
+  return testArr.value.filter(item => item.types === '选择题');
+})
 
 const getCourse = async () => {
   await axios.get('api/course/getAll').then(res => {
@@ -434,6 +436,12 @@ const clearTest = () => {
     removeTest(item)
   })
 } //点击清空组卷列表中的试题
+const onStart = () => {
+  return
+}
+const onEnd = () => {
+  return
+}
 
 
 onBeforeUnmount(() =>{
@@ -662,7 +670,30 @@ creatEventListener(); // 页面创建时开始监听页面高度
         <el-input v-model="testForm.shenPi" placeholder="输入审批老师" clearable />
       </el-form-item>
       <el-form-item label="选择题" prop="question1" v-if="testArr.findIndex(item => item.types === '选择题') !== -1">
-        <p>1</p>
+        <draggable
+            :list="quesOne"
+            :disabled="true"
+            @start="onStart"
+            ghost-class="ghost"
+            chosen-class="chosenClass"
+            animation="300"
+            @end="onEnd"
+        >
+          <span
+              style="margin: 0 5px 0 0"
+              v-for="(item, index) in quesOne"
+              :key="item.id"
+          >
+            <el-tag
+                :closable="true"
+                :disable-transitions="false"
+                @close="removeTest(item)"
+                :type="'success'"
+            >
+              {{ index }}. {{ item.description }}
+            </el-tag>
+          </span>
+        </draggable>
       </el-form-item>
       <el-form-item label="填空题" prop="question1" v-if="testArr.findIndex(item => item.types === '填空题') !== -1">
         <p>2</p>
@@ -717,5 +748,11 @@ creatEventListener(); // 页面创建时开始监听页面高度
 /deep/ .el-statistic {
   width: 80px;
   margin-left: auto;
+}
+.ghost {
+  border: solid 1px rgb(19, 41, 239);
+}
+.chosenClass {
+  background-color: #f1f1f1;
 }
 </style>
