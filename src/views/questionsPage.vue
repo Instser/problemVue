@@ -444,24 +444,27 @@ const removeTest = (row) => {
   console.log(testArr.value)
 } // 将不需要的试题移除组卷列表
 const downloadFile = (url) => {
-  try {
-    const response = axios({
-      url: url,
-      method: 'GET',
-      responseType: 'blob', // 重要：设置响应类型为blob
-    });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'test.docx'); // 假设是PDF文件，可以根据实际情况设置文件名和类型
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url); // 清理内存中的引用
-  } catch (error) {
-    console.error('下载文件失败', error);
-  }
-};
+  let resUrl = url
+  axios.create({
+    timeout: 500,
+    responseType: "blob", // 响应类型, 将响应数据转换为二进制数据
+    headers: {},
+  })
+      .get(resUrl)
+      .then((res) => {
+        console.log(res);
+        // 地址转换
+        let url = window.URL.createObjectURL(res.data);
+        // 文件名
+        let fileName = "test.docx";
+        const a = document.createElement("a");
+        a.setAttribute("href", url);
+        a.setAttribute("download", fileName);
+        document.body.append(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+}
 const creatTest = () => {
   //  根据testArr中的题目情况，像请求参数中添加题目。
   let list = []
