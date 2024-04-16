@@ -502,8 +502,6 @@ const creatTest = () => {
     title: testForm.value,
     list: list
   }))).then(res => {
-    console.log("sss")
-    downloadFile("http://www.jykeji.top:9000/question-picture/05f28bc7-d4fc-4cf3-a6f9-f9afd1a15b52.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Instser%2F20240416%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240416T011625Z&X-Amz-Expires=300&X-Amz-SignedHeaders=host&X-Amz-Signature=51386ef67560d7a8df04037b2a03aa1ecd8fb72627b82d0280cca0f85c3a373b")
     if (res.data.code === 200) {
       ElNotification({
         title: '试卷组建成功',
