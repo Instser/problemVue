@@ -6,7 +6,6 @@ import central from "@/views/centralPage.vue";
 import login from "@/views/loginPage.vue";
 import edit from '@/views/editPage.vue'
 import {storage} from "@/storage/storage";
-import system from "@/views/systemPage.vue";
 import course from "@/views/coursePage.vue";
 
 const routes = [
@@ -41,12 +40,6 @@ const adminMenu = [
         name: '课程管理',
         meta: { label: '课程管理', icon: 'Reading', role: 'admin', path: '/course'}
     }
-    // {
-    // path: '/system',
-    // component: system,
-    // name: '管理',
-    // meta: { label: '管理页面', icon: 'Setting',role:'admin', path: '/system' }
-    // }
 ]
 
 const router = createRouter({
