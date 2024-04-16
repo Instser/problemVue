@@ -443,6 +443,25 @@ const removeTest = (row) => {
   }
   console.log(testArr.value)
 } // 将不需要的试题移除组卷列表
+const downloadFile = (url) => {
+  try {
+    const response = axios({
+      url: url,
+      method: 'GET',
+      responseType: 'blob', // 重要：设置响应类型为blob
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'test.docx'); // 假设是PDF文件，可以根据实际情况设置文件名和类型
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url); // 清理内存中的引用
+  } catch (error) {
+    console.error('下载文件失败', error);
+  }
+};
 const creatTest = () => {
   //  根据testArr中的题目情况，像请求参数中添加题目。
   let list = []
@@ -483,11 +502,14 @@ const creatTest = () => {
     title: testForm.value,
     list: list
   }))).then(res => {
+    console.log("sss")
+    downloadFile("http://www.jykeji.top:9000/question-picture/05f28bc7-d4fc-4cf3-a6f9-f9afd1a15b52.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Instser%2F20240416%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240416T011625Z&X-Amz-Expires=300&X-Amz-SignedHeaders=host&X-Amz-Signature=51386ef67560d7a8df04037b2a03aa1ecd8fb72627b82d0280cca0f85c3a373b")
     if (res.data.code === 200) {
       ElNotification({
         title: '试卷组建成功',
         type: 'success'
       });
+      downloadFile(res.data.data)
     } else {
       ElNotification({
         title: '试卷组建失败',
