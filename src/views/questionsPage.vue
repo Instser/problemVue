@@ -5,6 +5,7 @@ import router from "@/router/router";
 import {ArrowDown} from "@element-plus/icons-vue";
 import {ElNotification} from "element-plus";
 import {storage} from "@/storage/storage";
+import draggable from 'vue-draggable-next'
 
 const tableData = ref([])
 const pageParams = ref({
@@ -452,7 +453,7 @@ const downloadFile = (url) => {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'filename.ext'); // 提供下载时使用的默认文件名
+    link.setAttribute('download', 'test.docx'); // 提供下载时使用的默认文件名
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -822,22 +823,27 @@ creatEventListener(); // 页面创建时开始监听页面高度
       </el-form-item>
       <el-form-item label="证明题" prop="question1" v-if="testArr.findIndex(item => item.types === '证明题') !== -1">
         <el-input v-model="typeDescArr.proveDesc" placeholder="输入证明题描述，四、总共两题，每题10分" clearable />
-        <span
-            style="margin: 0 5px 0 0"
-            v-for="(item, index) in testArr.filter(q => q.types === '证明题')"
-            :key="item.id"
-        >
-          <el-tooltip :content="item.description" placement="top">
-            <el-tag
-                :closable="true"
-                :disable-transitions="false"
-                @close="removeTest(item)"
-                :type="'success'"
+          <draggable
+            :list="testArr"
+            :disable="true"
             >
-            {{ index + 1 }}. {{ item.description }}
-          </el-tag>
-          </el-tooltip>
-        </span>
+            <span
+                style="margin: 0 5px 0 0"
+                v-for="(item, index) in testArr.filter(q => q.types === '证明题')"
+                :key="item.id"
+            >
+              <el-tooltip :content="item.description" placement="top">
+                <el-tag
+                    :closable="true"
+                    :disable-transitions="false"
+                    @close="removeTest(item)"
+                    :type="'success'"
+                >
+                {{ index + 1 }}. {{ item.description }}
+              </el-tag>
+              </el-tooltip>
+            </span>
+          </draggable>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="testFormVisible = false; creatTest()">
