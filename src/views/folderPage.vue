@@ -11,7 +11,7 @@ const params = ref({
 const count = ref(1)
 const multipleSelection = ref([])
 const getPage = () => {
-  axios.get('/api/course/page', {
+  axios.get('http://8.210.230.249:8888/course/page', {
     params: {
       page: params.value.page,
       pageSize: params.value.pageSize

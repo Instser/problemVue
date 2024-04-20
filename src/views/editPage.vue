@@ -22,7 +22,7 @@ const init = {
   min_height: 600, //编辑器最小高度
   statusbar: false, // 显示下方操作栏
   image_dimensions: false, // 禁止操作图片
-  images_upload_url: '/api/questions/uploadPicture',
+  images_upload_url: 'http://8.210.230.249:8888/questions/uploadPicture',
   plugins: 'link lists image code table wordcount image  autoresize ', // 富文本插件
   font_size_formats: '8px 10px 12px 14px 16px 18px 24px 36px 48px 128px', // 字体大小文本
   font_family_formats:
@@ -52,7 +52,7 @@ const addQuestion = () => {
   // eslint-disable-next-line no-prototype-builtins
   if (questionForm.value.hasOwnProperty('id')) {
     //  有id存在就调用update接口更新问题
-    axios.post('/api/questions/update', JSON.parse(JSON.stringify(
+    axios.post('http://8.210.230.249:8888/questions/update', JSON.parse(JSON.stringify(
         questionForm.value
     ))).then(res => {
       if (res.data.code === 200) {
@@ -71,7 +71,7 @@ const addQuestion = () => {
     console.log('update')
   } else {
     // 没有id就用add添加问题。
-    axios.post('/api/questions/add', JSON.parse(JSON.stringify(
+    axios.post('http://8.210.230.249:8888/questions/add', JSON.parse(JSON.stringify(
         questionForm.value
         // eslint-disable-next-line no-unused-vars
     ))).then(res => {
@@ -94,7 +94,7 @@ const getQuestion = () => {
   console.log(route.query)
   if (route.query && numRe.test(route.query.id)) {
     console.log('post')
-    axios.get('/api/questions/query', {
+    axios.get('http://8.210.230.249:8888/questions/query', {
       params: {
         id: route.query.id
       }

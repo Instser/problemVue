@@ -25,7 +25,7 @@ const inputVisible =  ref(false)
 const inputValue = ref('')
 
 const getPage = () => {
-  axios.get('/api/course/page', {
+  axios.get('http://8.210.230.249:8888/course/page', {
     params: {
       page: params.value.page,
       pageSize: params.value.pageSize
@@ -46,7 +46,7 @@ const handleSizeChange = (val) => {
   getPage()
 }
 const courseDelete = (row) => {
-  axios.get('/api/course/deleteCourse', {
+  axios.get('http://8.210.230.249:8888/course/deleteCourse', {
     params: {
       id: row.id
     }
@@ -75,7 +75,7 @@ const handleSelectionChange = (val) => {
   multipleSelection.value = val
 }
 const creatCourse = () => {
-  axios.post('/api/course/addCourse', JSON.parse(JSON.stringify({
+  axios.post('http://8.210.230.249:8888/course/addCourse', JSON.parse(JSON.stringify({
     name: dialogForm.value.name,
     description: dialogForm.value.description
   }))).then(res => {
@@ -100,7 +100,7 @@ const editCourse = (row) => {
   dialogForm.value.id = row.id
 }
 const primaryCourse = () => {
-  axios.post('/api/course/updateCourse', JSON.parse(JSON.stringify({
+  axios.post('http://8.210.230.249:8888/course/updateCourse', JSON.parse(JSON.stringify({
     id: dialogForm.value.id,
     name: dialogForm.value.name,
     description: dialogForm.value.description

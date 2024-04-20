@@ -143,7 +143,7 @@ const addToFolderForm = ref({
 })
 
 const getCourse = async () => {
-  await axios.get('api/course/getAll').then(res => {
+  await axios.get('http://8.210.230.249:8888/course/getAll').then(res => {
     console.log(res.data)
     if (res.data.code === 401) {
       storage.remove('isAuthenticated');
@@ -159,7 +159,7 @@ const getCourse = async () => {
 } // 加载课程数据
 const getFolder = async () => {
   folderArr.value = []
-  await axios.get('/api/quesFolder/getFolder').then(res => {
+  await axios.get('http://8.210.230.249:8888/quesFolder/getFolder').then(res => {
     folderArr.value = res.data.data
     for (let i = 0; i < folderArr.value.length; i++) {
       // 为文件夹对象添加description属性，传入tableData中
@@ -176,7 +176,7 @@ const getFolder = async () => {
 } //加载文件及数据
 const loadData = async () => {
   loading.value = true
-  axios.post('/api/questions/page', JSON.parse(JSON.stringify({
+  axios.post('http://8.210.230.249:8888/questions/page', JSON.parse(JSON.stringify({
         page: pageParams.value.page,
         pageSize: pageParams.value.pageSize,
         filterKey: 'ques_cour',
@@ -260,7 +260,7 @@ const addToFolder = () => {
   const questionIdArr = ref(multipleSelection.value.questionList.map(question => question.id))
   console.log(questionIdArr.value)
   if (questionIdArr.value[0]) {
-    axios.post('/api/folder_ques_list/moveToFolder', '', {
+    axios.post('http://8.210.230.249:8888/folder_ques_list/moveToFolder', '', {
           params: {
             folderId: addToFolderForm.value.folderId,
             quesIds: questionIdArr.value.join(',')
@@ -289,7 +289,7 @@ const deleteEvent = () => {
   console.log(questionIdArr.value)
   if (folderIdArr.value[0]) {
     console.log('有文件夹删除')
-    axios.post('/api/quesFolder/deletedFolder', '',{
+    axios.post('http://8.210.230.249:8888/quesFolder/deletedFolder', '',{
       params: {
         id: folderIdArr.value.join(',')
       }
@@ -319,7 +319,7 @@ const deleteEvent = () => {
     })
   }
   if (questionIdArr.value[0]) {
-    axios.post('/api/questions/delete', '',{
+    axios.post('http://8.210.230.249:8888/questions/delete', '',{
           params: {
             id: questionIdArr.value.join(',')
           }
@@ -378,7 +378,7 @@ const handleResize= () => {
 const lazyLoadQuestion = (row, treeNode, resolve) => {
   console.log(row.id)
   // 通过文件夹id获取到题目后，将返回去数据插入文件夹对象的children数组中
-  axios.post('/api/questions/page', JSON.parse(JSON.stringify({
+  axios.post('http://8.210.230.249:8888/questions/page', JSON.parse(JSON.stringify({
     page: 1,
     pageSize: 100,
     folderId: row.id
@@ -399,7 +399,7 @@ const lazyLoadQuestion = (row, treeNode, resolve) => {
   })
 } //点击文件夹懒加载题目
 const creatFolder = () => {
-  axios.post('/api/quesFolder/creatFolder', null, {
+  axios.post('http://8.210.230.249:8888/quesFolder/creatFolder', null, {
     params: dialogForm.value
     // eslint-disable-next-line no-unused-vars
   }).then(res => {
@@ -498,7 +498,7 @@ const creatTest = () => {
     })
   }
   console.log(list)
-  axios.post('/api/questions/buildTest', JSON.parse(JSON.stringify({
+  axios.post('http://8.210.230.249:8888/questions/buildTest', JSON.parse(JSON.stringify({
     title: testForm.value,
     list: list
   }))).then(res => {
@@ -600,8 +600,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         <template #header>
           <el-input v-model="search" size="small" placeholder="输入题目关键字" />
         </template>
-        <template  #default="
-{/* eslint-disable-next-line vue/no-unused-vars */}{ row, $index }">
+        <template  #default="{ row,}">
           <el-button link type="primary" size="small" @click="handleClick(row)">编辑</el-button>
           <el-button link type="primary" size="small" @click="addTest(row)" v-if="!row.hasChildren && row.description && !row.inTest">加入试卷</el-button>
           <el-button link type="primary" size="small" @click="removeTest(row)" v-if="!row.hasChildren && row.description && row.inTest === true">移出试卷</el-button>

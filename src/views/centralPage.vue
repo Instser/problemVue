@@ -11,7 +11,7 @@ const formTable = ref({
   newPsw: ''
 })
 const updatePsw = () => {
-  axios.post('/api/user/updatePwd',JSON.parse(JSON.stringify({
+  axios.post('http://8.210.230.249:8888/user/updatePwd',JSON.parse(JSON.stringify({
     mapKey1: formTable.value.oldPsw,
     mapKey2: formTable.value.newPsw
   }))).then(res => {
@@ -29,7 +29,7 @@ const updatePsw = () => {
   })
 }
 const logOff = () => {
-  axios.get('/api/logout')
+  axios.get('http://8.210.230.249:8888/logout')
   storage.remove('isAuthenticated')
   router.push('/login')
   ElNotification({
