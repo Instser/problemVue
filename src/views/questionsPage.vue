@@ -950,7 +950,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
       <el-button
           type="danger"
           :disabled="progressPercent < 100"
-          @click="progressVisible = false"
+          @click="progressVisible = false;progressPercent = 0;"
       >
         {{ progressPercent < 100 ? '生成中...' : '完成' }}
       </el-button>
