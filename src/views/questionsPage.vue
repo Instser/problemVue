@@ -128,7 +128,7 @@ const rules = {
     },
   ],
   desc: [
-    { required: true, message: 'Please input activity form', trigger: 'blur' },
+    {required: true, message: 'Please input activity form', trigger: 'blur'},
   ],
 } // 试卷信息的校验规则
 const typeDescArr = ref({
@@ -142,6 +142,11 @@ const addToFolderForm = ref({
   folderId: ''
 }) // 将试题添加到文件夹的表单数据
 const formRef = ref(null) // 控制试卷信息页面的ref
+
+// 进度条变量
+const progressVisible = ref(false)
+const progressPercent = ref(0)
+let startTime = 0
 
 const getCourse = async () => {
   await axios.get('/api/course/getAll').then(res => {
@@ -206,7 +211,7 @@ const loadData = async () => {
       isLoading.value = tableData.value.length < res.data.data.count + folderArr.value.length;
       // 处理后将loading状态解锁
       loading.value = false
-    }else if (storage.get('isAuthenticated')){
+    } else if (storage.get('isAuthenticated')) {
       ElNotification({
         title: '未查询到该课程的题目',
         type: 'warning',
@@ -236,7 +241,7 @@ const handleClick = (row) => {
 
   } else {
     // 点击编辑后，携带获取到的题目id跳转到编辑页面
-    router.push({path: '/edit', query: {id : row.id}})
+    router.push({path: '/edit', query: {id: row.id}})
   }
 
 } //点击题目/文件夹，判断跳转
@@ -290,7 +295,7 @@ const deleteEvent = () => {
   console.log(questionIdArr.value)
   if (folderIdArr.value[0]) {
     console.log('有文件夹删除')
-    axios.post('/api/quesFolder/deletedFolder', '',{
+    axios.post('/api/quesFolder/deletedFolder', '', {
       params: {
         id: folderIdArr.value.join(',')
       }
@@ -320,7 +325,7 @@ const deleteEvent = () => {
     })
   }
   if (questionIdArr.value[0]) {
-    axios.post('/api/questions/delete', '',{
+    axios.post('/api/questions/delete', '', {
           params: {
             id: questionIdArr.value.join(',')
           }
@@ -373,7 +378,7 @@ const courseSelect = async (courseItem) => {
 const creatEventListener = () => {
   window.addEventListener('resize', handleResize)
 } //设置页面大小监听器
-const handleResize= () => {
+const handleResize = () => {
   fullHeight.value = document.documentElement.clientHeight - 110
 } //获取窗口高度
 const lazyLoadQuestion = (row, treeNode, resolve) => {
@@ -407,7 +412,7 @@ const creatFolder = () => {
     freshTable()
   })
 } // 创建文件夹
-const addTest = (row) =>{
+const addTest = (row) => {
   console.log(typeof row.index)
   console.log(row.index)
   // 判断数据的index是number还是string，以此确定是不是子数据。
@@ -461,6 +466,24 @@ const downloadFile = (url) => {
   });
 }
 const createTest = async () => {
+  testFormVisible.value = false
+  progressVisible.value = true
+
+  // 非线性进度实现（贝塞尔曲线缓动）
+  startTime = Date.now()
+  const animate = () => {
+    const elapsed = Date.now() - startTime
+    const progress = elapsed / 8000 // 8秒总时间
+
+    // 使用三次贝塞尔缓动函数
+    progressPercent.value = Math.min(1 - Math.pow(1 - progress, 3), 1) * 100
+
+    if (progress < 1) {
+      requestAnimationFrame(animate)
+    }
+  }
+  requestAnimationFrame(animate)
+
   const form = unref(formRef)
   form.validate(valid => {
     if (valid) {
@@ -494,7 +517,6 @@ const createTest = async () => {
           "quesId": testArr.value.filter(item => item.types === '证明题').map(item => item.id)
         })
       }
-      testFormVisible.value = false
       try {
         axios.post('/api/questions/buildTest', JSON.parse(JSON.stringify({
           title: testForm.value,
@@ -531,7 +553,7 @@ const searchQuestion = () => {
   if (search.value === '') {
     freshTable();
   } else {
-    axios.post('/api/questions/page',JSON.parse(JSON.stringify({
+    axios.post('/api/questions/page', JSON.parse(JSON.stringify({
       page: 1,
       pageSize: 100,
       queryKeyword: search.value,
@@ -560,7 +582,7 @@ const searchQuestion = () => {
         isLoading.value = false
         // 处理后将loading状态解锁
         loading.value = false
-      }else if (storage.get('isAuthenticated')){
+      } else if (storage.get('isAuthenticated')) {
         ElNotification({
           title: '未查询到该课程的题目',
           type: 'warning',
@@ -573,7 +595,7 @@ const searchQuestion = () => {
 }
 
 
-onBeforeUnmount(() =>{
+onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
 });// 组件销毁前解除监听释放内存
 
@@ -595,23 +617,25 @@ creatEventListener(); // 页面创建时开始监听页面高度
   <div class="header_div">
     <el-button type="primary" round @click="folderDialogVisible = true">创建文件夹</el-button>
     <el-button type="primary" round @click="() => router.push('/edit')">创建试题</el-button>
-    <el-button  round icon="CopyDocument" @click="addToFolderVisible = true">添加试题到文件夹</el-button>
-    <el-button  round icon="Delete" @click="deleteEvent">批量删除</el-button>
+    <el-button round icon="CopyDocument" @click="addToFolderVisible = true">添加试题到文件夹</el-button>
+    <el-button round icon="Delete" @click="deleteEvent">批量删除</el-button>
     <el-dropdown>
       <el-button round>
         {{ currentCourse.courseName }}
         <el-icon class="el-icon--right">
-          <arrow-down />
+          <arrow-down/>
         </el-icon>
       </el-button>
       <template #dropdown>
         <el-dropdown-menu>
-          <el-dropdown-item v-for="courseItem in courseArr" :key = 'courseItem.id' @click="courseSelect(courseItem)"> {{ courseItem.name }}</el-dropdown-item>
+          <el-dropdown-item v-for="courseItem in courseArr" :key='courseItem.id' @click="courseSelect(courseItem)">
+            {{ courseItem.name }}
+          </el-dropdown-item>
         </el-dropdown-menu>
       </template>
     </el-dropdown>
     <el-col :span="6">
-      <el-statistic title="已选题目" :value="testArr.length" />
+      <el-statistic title="已选题目" :value="testArr.length"/>
     </el-col>
     <el-button type="primary" @click="testFormVisible = true"
     >创建试卷
@@ -635,31 +659,38 @@ creatEventListener(); // 页面创建时开始监听页面高度
               row-key="index"
               :load="lazyLoadQuestion"
               :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
-              >
-      <el-table-column fixed type="selection" width='40' />
+    >
+      <el-table-column fixed type="selection" width='40'/>
       <el-table-column fixed type="index" width="auto"/>
-      <el-table-column prop="description" label="文件夹/题目"  show-overflow-tooltip min-width="600">
+      <el-table-column prop="description" label="文件夹/题目" show-overflow-tooltip min-width="600">
         <template v-slot="scope">
-          <span>{{ scope.row.description}}</span>
+          <span>{{ scope.row.description }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="quesCourStr" label="课程"></el-table-column>
       <el-table-column prop="types" label="题型" sortable/>
-      <el-table-column prop="hard" sortable label="难易" />
+      <el-table-column prop="hard" sortable label="难易"/>
       <el-table-column fixed="right" min-width="160">
         <template #header>
-          <el-input v-model="search" size="small" placeholder="输入题目关键字" :prefix-icon="Search" @input="searchQuestion()"/>
+          <el-input v-model="search" size="small" placeholder="输入题目关键字" :prefix-icon="Search"
+                    @input="searchQuestion()"/>
         </template>
-        <template  #default="{ row,}">
+        <template #default="{ row,}">
           <el-button link type="primary" size="small" @click="handleClick(row)">编辑</el-button>
-          <el-button link type="primary" size="small" @click="addTest(row)" v-if="!row.hasChildren && row.description && !row.inTest">加入试卷</el-button>
-          <el-button link type="primary" size="small" @click="removeTest(row)" v-if="!row.hasChildren && row.description && row.inTest === true">移出试卷</el-button>
+          <el-button link type="primary" size="small" @click="addTest(row)"
+                     v-if="!row.hasChildren && row.description && !row.inTest">加入试卷
+          </el-button>
+          <el-button link type="primary" size="small" @click="removeTest(row)"
+                     v-if="!row.hasChildren && row.description && row.inTest === true">移出试卷
+          </el-button>
         </template>
       </el-table-column>
       <template v-slot:append>
         <div class="buttonDiv">
           <p>总共有{{ count }}条数据</p>
-          <el-button style="" :loading="loading" :disabled="loading" v-if="isLoading" @click="loadData" link type="primary" size="large">加载题目</el-button>
+          <el-button style="" :loading="loading" :disabled="loading" v-if="isLoading" @click="loadData" link
+                     type="primary" size="large">加载题目
+          </el-button>
         </div>
       </template>
     </el-table>
@@ -679,17 +710,17 @@ creatEventListener(); // 页面创建时开始监听页面高度
              width="500"
              align-center
              :close-on-click-modal="false"
-              @closed="() =>  dialogForm = {}">
+             @closed="() =>  dialogForm = {}">
     <el-form :model="dialogForm">
       <el-form-item label="文件夹名" :label-width="150">
-        <el-input v-model="dialogForm.name" autocomplete="off" />
+        <el-input v-model="dialogForm.name" autocomplete="off"/>
       </el-form-item>
       <el-form-item label="描述" :label-width="150">
-        <el-input v-model="dialogForm.desc" autocomplete="off" />
+        <el-input v-model="dialogForm.desc" autocomplete="off"/>
       </el-form-item>
       <el-form-item label="课程" :label-width="150">
         <el-select v-model="dialogForm.courseId" placeholder="选择课程">
-          <el-option v-for="item in courseArr" :label="item.name" :key="item.id" :value="item.id" />
+          <el-option v-for="item in courseArr" :label="item.name" :key="item.id" :value="item.id"/>
         </el-select>
       </el-form-item>
     </el-form>
@@ -707,11 +738,11 @@ creatEventListener(); // 页面创建时开始监听页面高度
              width="500"
              align-center
              :close-on-click-modal="false"
-              @closed="() =>  addToFolderForm = {}">
+             @closed="() =>  addToFolderForm = {}">
     <el-form :model="addToFolderForm">
       <el-form-item label="文件夹" :label-width="150">
         <el-select v-model="addToFolderForm.folderId" placeholder="选择文件夹">
-          <el-option v-for="item in folderArr" :label="item.name" :key="item.id" :value="item.id" />
+          <el-option v-for="item in folderArr" :label="item.name" :key="item.id" :value="item.id"/>
         </el-select>
       </el-form-item>
     </el-form>
@@ -724,6 +755,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
       </div>
     </template>
   </el-dialog>
+<!--  试卷参数表单-->
   <el-dialog v-model="testFormVisible"
              title="创建试卷"
              width="800"
@@ -740,16 +772,16 @@ creatEventListener(); // 页面创建时开始监听页面高度
         status-icon
     >
       <el-form-item label="试卷科目" prop="subject">
-        <el-input v-model="testForm.subject" />
+        <el-input v-model="testForm.subject"/>
       </el-form-item>
       <el-form-item label="班级" prop="classs">
-        <el-input v-model="testForm.classs" />
+        <el-input v-model="testForm.classs"/>
       </el-form-item>
       <el-form-item label="考试时长" prop="time">
-        <el-input v-model="testForm.time" />
+        <el-input v-model="testForm.time"/>
       </el-form-item>
       <el-form-item label="章节" prop="number">
-        <el-input v-model="testForm.number" />
+        <el-input v-model="testForm.number"/>
       </el-form-item>
       <el-form-item label="学年" required>
         <el-col :span="11">
@@ -781,34 +813,34 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </el-col>
       </el-form-item>
       <el-form-item label="学期" prop="term">
-        <el-input v-model="testForm.term" />
+        <el-input v-model="testForm.term"/>
       </el-form-item>
       <el-form-item label="开/闭卷" prop="open">
         <el-radio-group v-model="testForm.open">
-          <el-radio-button label="开卷" value="开卷" />
-          <el-radio-button label="闭卷" value="闭卷" />
+          <el-radio-button label="开卷" value="开卷"/>
+          <el-radio-button label="闭卷" value="闭卷"/>
         </el-radio-group>
       </el-form-item>
       <el-form-item label="考试类型" prop="exam">
         <el-radio-group v-model="testForm.exam">
-          <el-radio-button label="考试" value="考试" />
-          <el-radio-button label="考察" value="考察" />
+          <el-radio-button label="考试" value="考试"/>
+          <el-radio-button label="考察" value="考察"/>
         </el-radio-group>
       </el-form-item>
       <el-form-item label="命题老师" prop="mingTi">
-        <el-input v-model="testForm.mingTi" placeholder="输入命题老师" clearable />
+        <el-input v-model="testForm.mingTi" placeholder="输入命题老师" clearable/>
       </el-form-item>
       <el-form-item label="审题老师" prop="shenTI">
-        <el-input v-model="testForm.shenTi" placeholder="输入审题老师" clearable />
+        <el-input v-model="testForm.shenTi" placeholder="输入审题老师" clearable/>
       </el-form-item>
       <el-form-item label="审核老师" prop="mingTi">
-        <el-input v-model="testForm.shenHe" placeholder="输入审核老师" clearable />
+        <el-input v-model="testForm.shenHe" placeholder="输入审核老师" clearable/>
       </el-form-item>
       <el-form-item label="审批老师" prop="shenPi">
-        <el-input v-model="testForm.shenPi" placeholder="输入审批老师" clearable />
+        <el-input v-model="testForm.shenPi" placeholder="输入审批老师" clearable/>
       </el-form-item>
       <el-form-item label="选择题" prop="question1" v-if="testArr.findIndex(item => item.types === '选择题') !== -1">
-        <el-input v-model="typeDescArr.selectDesc" placeholder="输入选择题描述，如：一、总共五题，每题3分" clearable />
+        <el-input v-model="typeDescArr.selectDesc" placeholder="输入选择题描述，如：一、总共五题，每题3分" clearable/>
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '选择题')"
@@ -827,7 +859,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </span>
       </el-form-item>
       <el-form-item label="填空题" prop="question1" v-if="testArr.findIndex(item => item.types === '填空题') !== -1">
-        <el-input v-model="typeDescArr.gapDesc" placeholder="输入填空题描述，如：二、总共六题，每题3分" clearable />
+        <el-input v-model="typeDescArr.gapDesc" placeholder="输入填空题描述，如：二、总共六题，每题3分" clearable/>
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '填空题')"
@@ -846,7 +878,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </span>
       </el-form-item>
       <el-form-item label="简答题" prop="question1" v-if="testArr.findIndex(item => item.types === '简答题') !== -1">
-        <el-input v-model="typeDescArr.answerDesc" placeholder="输入简答题描述，如：三、总共三题，每题10分" clearable />
+        <el-input v-model="typeDescArr.answerDesc" placeholder="输入简答题描述，如：三、总共三题，每题10分" clearable/>
         <span
             style="margin: 0 5px 0 0"
             v-for="(item, index) in testArr.filter(q => q.types === '简答题')"
@@ -865,11 +897,11 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </span>
       </el-form-item>
       <el-form-item label="证明题" prop="question1" v-if="testArr.findIndex(item => item.types === '证明题') !== -1">
-        <el-input v-model="typeDescArr.proveDesc" placeholder="输入证明题描述，四、总共两题，每题10分" clearable />
-          <draggable
+        <el-input v-model="typeDescArr.proveDesc" placeholder="输入证明题描述，四、总共两题，每题10分" clearable/>
+        <draggable
             :list="testArr"
             :disable="true"
-            >
+        >
             <span
                 style="margin: 0 5px 0 0"
                 v-for="(item, index) in testArr.filter(q => q.types === '证明题')"
@@ -886,7 +918,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
               </el-tag>
               </el-tooltip>
             </span>
-          </draggable>
+        </draggable>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="createTest()">
@@ -896,49 +928,89 @@ creatEventListener(); // 页面创建时开始监听页面高度
       </el-form-item>
     </el-form>
   </el-dialog>
+<!--  进度条-->
+  <el-dialog
+      :model-value="progressVisible"
+      title="试卷生成中"
+      width="30%"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+  >
+    <el-progress
+        :percentage="progressPercent"
+        :format="(percent) => `${Math.round(percent)}%`"
+        :stroke-width="16"
+        :text-inside="true"
+        status="success"
+        striped
+        striped-flow
+    />
+    <template #footer>
+      <el-button
+          type="danger"
+          :disabled="progressPercent < 100"
+          @click="progressVisible = false"
+      >
+        {{ progressPercent < 100 ? '生成中...' : '完成' }}
+      </el-button>
+    </template>
+  </el-dialog>
+
 </template>
 
 <style scoped>
 .demo-pagination-block + .demo-pagination-block {
   margin-top: 10px;
 }
+
 .demo-pagination-block .demonstration {
   margin-bottom: 16px;
 }
+
 .input-with-select .el-input-group__prepend {
   background-color: var(--el-fill-color-blank);
 }
+
 .buttonDiv {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 40px;
 }
+
 /deep/ .el-table__placeholder {
   display: none
 }
-.header_div{
+
+.header_div {
   height: 50px;
   display: flex;
   align-items: center;
 }
+
 .header_div > button {
   margin-right: 10px;
 }
+
 .el-col {
   margin-left: auto;
   text-align: center;
 }
+
 /deep/ .el-statistic {
   width: 80px;
   margin-left: auto;
 }
+
 .ghost {
   border: solid 1px rgb(19, 41, 239);
 }
+
 .chosenClass {
   background-color: #f1f1f1;
 }
+
 /deep/ .el-tag {
   display: flex;
   align-items: center;
