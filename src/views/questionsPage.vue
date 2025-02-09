@@ -1,8 +1,8 @@
 <script setup>
-import {onBeforeUnmount, ref} from "vue";
+import {onBeforeUnmount, ref, unref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
-import {ArrowDown} from "@element-plus/icons-vue";
+import {ArrowDown, Search} from "@element-plus/icons-vue";
 import {ElNotification} from "element-plus";
 import {storage} from "@/storage/storage";
 import draggable from 'vue-draggable-next'
@@ -11,35 +11,35 @@ const tableData = ref([])
 const pageParams = ref({
   page: 1,
   pageSize: 20
-})
+}) // 试题分页信息
 const count = ref() // 数据库中当前课程下的文件夹和所有题目的总数据
 const currenCount = ref() // 数当前table中的数据数量
 const multipleSelection = ref({
   folderList: [],
   questionList: []
-})
-const currentPage = ref(1)
-const courseArr = ref([])
-const folderArr = ref([])
-const questionArr = ref([])
+}) // 多选试题或者文件夹数据
+const currentPage = ref(1) // table的当前页面
+const courseArr = ref([]) // 该教师所有课程数据
+const folderArr = ref([]) // 当前页面文件夹数据
+const questionArr = ref([]) // 当前页面试题数据
 const currentCourse = ref({
   courseName: '',
   courseId: ''
-})
-const search = ref('')
-const isLoading = ref(false)
-const fullHeight = ref(document.documentElement.clientHeight - 110)
-const loading = ref(false)
-const folderDialogVisible = ref(false)
+}) // 当前课程的数据
+const search = ref('') // 搜索框的数据
+const isLoading = ref(false) // 判断是否还有题目加载
+const fullHeight = ref(document.documentElement.clientHeight - 110) // table高度自适应
+const loading = ref(false) // 判断是否正在加载
+const folderDialogVisible = ref(false) // 创建、修改文件的表单展示
 const dialogForm = ref({
   name: '',
   desc: '',
   courseId: ''
-})
-const tableRef = ref(null)
+})  // 创建、修改文件夹的表单数据
+const tableRef = ref(null) // 控制试题table的ref
 const testForm = ref({
   subject: '',
-  class: '',
+  classs: '',
   time: '',
   yearStart: '',
   yearEnd: '',
@@ -51,9 +51,9 @@ const testForm = ref({
   shenTi: '',
   shenHe: '',
   shenPi: ''
-})
-const testArr = ref([])
-const testFormVisible = ref(false)
+}) // 试卷基础信息的表单数据
+const testArr = ref([]) // 保存选择到试卷中的试题数据
+const testFormVisible = ref(false) // 试卷信息页面显示
 const rules = {
   subject: [
     {
@@ -109,7 +109,7 @@ const rules = {
   open: [
     {
       required: true,
-      message: 'Please select a location',
+      message: '请选择考试方式',
       trigger: 'change',
     },
   ],
@@ -130,20 +130,21 @@ const rules = {
   desc: [
     { required: true, message: 'Please input activity form', trigger: 'blur' },
   ],
-}
+} // 试卷信息的校验规则
 const typeDescArr = ref({
   selectDesc: '',
   gapDesc: '',
   answerDesc: '',
   proveDesc: ''
-})
-const addToFolderVisible = ref(false)
+}) // 大题简介的数据
+const addToFolderVisible = ref(false) // 试题添加到文件夹的表单显示
 const addToFolderForm = ref({
   folderId: ''
-})
+}) // 将试题添加到文件夹的表单数据
+const formRef = ref(null) // 控制试卷信息页面的ref
 
 const getCourse = async () => {
-  await axios.get('http://8.210.230.249:8888/course/getAll').then(res => {
+  await axios.get('/api/course/getAll').then(res => {
     console.log(res.data)
     if (res.data.code === 401) {
       storage.remove('isAuthenticated');
@@ -159,7 +160,7 @@ const getCourse = async () => {
 } // 加载课程数据
 const getFolder = async () => {
   folderArr.value = []
-  await axios.get('http://8.210.230.249:8888/quesFolder/getFolder').then(res => {
+  await axios.get('/api/quesFolder/getFolder').then(res => {
     folderArr.value = res.data.data
     for (let i = 0; i < folderArr.value.length; i++) {
       // 为文件夹对象添加description属性，传入tableData中
@@ -176,7 +177,7 @@ const getFolder = async () => {
 } //加载文件及数据
 const loadData = async () => {
   loading.value = true
-  axios.post('http://8.210.230.249:8888/questions/page', JSON.parse(JSON.stringify({
+  axios.post('/api/questions/page', JSON.parse(JSON.stringify({
         page: pageParams.value.page,
         pageSize: pageParams.value.pageSize,
         filterKey: 'ques_cour',
@@ -260,7 +261,7 @@ const addToFolder = () => {
   const questionIdArr = ref(multipleSelection.value.questionList.map(question => question.id))
   console.log(questionIdArr.value)
   if (questionIdArr.value[0]) {
-    axios.post('http://8.210.230.249:8888/folder_ques_list/moveToFolder', '', {
+    axios.post('/api/folder_ques_list/moveToFolder', '', {
           params: {
             folderId: addToFolderForm.value.folderId,
             quesIds: questionIdArr.value.join(',')
@@ -289,7 +290,7 @@ const deleteEvent = () => {
   console.log(questionIdArr.value)
   if (folderIdArr.value[0]) {
     console.log('有文件夹删除')
-    axios.post('http://8.210.230.249:8888/quesFolder/deletedFolder', '',{
+    axios.post('/api/quesFolder/deletedFolder', '',{
       params: {
         id: folderIdArr.value.join(',')
       }
@@ -319,7 +320,7 @@ const deleteEvent = () => {
     })
   }
   if (questionIdArr.value[0]) {
-    axios.post('http://8.210.230.249:8888/questions/delete', '',{
+    axios.post('/api/questions/delete', '',{
           params: {
             id: questionIdArr.value.join(',')
           }
@@ -378,7 +379,7 @@ const handleResize= () => {
 const lazyLoadQuestion = (row, treeNode, resolve) => {
   console.log(row.id)
   // 通过文件夹id获取到题目后，将返回去数据插入文件夹对象的children数组中
-  axios.post('http://8.210.230.249:8888/questions/page', JSON.parse(JSON.stringify({
+  axios.post('/api/questions/page', JSON.parse(JSON.stringify({
     page: 1,
     pageSize: 100,
     folderId: row.id
@@ -399,16 +400,13 @@ const lazyLoadQuestion = (row, treeNode, resolve) => {
   })
 } //点击文件夹懒加载题目
 const creatFolder = () => {
-  axios.post('http://8.210.230.249:8888/quesFolder/creatFolder', null, {
+  axios.post('/api/quesFolder/creatFolder', null, {
     params: dialogForm.value
     // eslint-disable-next-line no-unused-vars
   }).then(res => {
     freshTable()
   })
-}
-// watch(search, (newval, oldValue) => {
-//   tableRef.value.filter(newval)
-// })
+} // 创建文件夹
 const addTest = (row) =>{
   console.log(typeof row.index)
   console.log(row.index)
@@ -446,14 +444,14 @@ const removeTest = (row) => {
 } // 将不需要的试题移除组卷列表
 const downloadFile = (url) => {
   axios({
-    url: url, // 假设这是你的API端点
+    url: url,
     method: 'GET',
-    responseType: 'blob', // 确保响应类型为blob
+    responseType: 'blob',
   }).then(response => {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'test.docx'); // 提供下载时使用的默认文件名
+    link.setAttribute('download', 'test.docx');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -462,65 +460,117 @@ const downloadFile = (url) => {
     console.error('下载文件失败:', error);
   });
 }
-const creatTest = () => {
-  //  根据testArr中的题目情况，像请求参数中添加题目。
-  let list = []
-  if (testArr.value.findIndex(item => item.types === '选择题') !== -1) {
-    console.log('push11')
-    list.push({
-      typeName: '选择题',
-      "typeDesc": typeDescArr.value.selectDesc,
-      "quesId": testArr.value.filter(item => item.types === '选择题').map(item => item.id)
-    })
-  }
-  if (testArr.value.findIndex(item => item.types === '填空题') !== -1) {
-    console.log('push22')
-    list.push({
-      "typeName": "填空题",
-      "typeDesc": typeDescArr.value.gapDesc,
-      "quesId": testArr.value.filter(item => item.types === '填空题').map(item => item.id)
-    })
-  }
-  if (testArr.value.findIndex(item => item.types === '简答题') !== -1) {
-    console.log('push33')
-    list.push({
-      "typeName": "计算题",
-      "typeDesc": typeDescArr.value.answerDesc,
-      "quesId": testArr.value.filter(item => item.types === '简答题').map(item => item.id)
-    })
-  }
-  if (testArr.value.findIndex(item => item.types === '证明题') !== -1) {
-    console.log('push44')
-    list.push({
-      "typeName": "证明题",
-      "typeDesc": typeDescArr.value.proveDesc,
-      "quesId": testArr.value.filter(item => item.types === '证明题').map(item => item.id)
-    })
-  }
-  console.log(list)
-  axios.post('http://8.210.230.249:8888/questions/buildTest', JSON.parse(JSON.stringify({
-    title: testForm.value,
-    list: list
-  }))).then(res => {
-    if (res.data.code === 200) {
-      ElNotification({
-        title: '试卷组建成功',
-        type: 'success'
-      });
-      downloadFile(res.data.data)
-    } else {
-      ElNotification({
-        title: '试卷组建失败',
-        type: 'error'
-      })
+const createTest = async () => {
+  const form = unref(formRef)
+  form.validate(valid => {
+    if (valid) {
+      //  根据testArr中的题目情况，像请求参数中添加题目。
+      let list = []
+      if (testArr.value.findIndex(item => item.types === '选择题') !== -1) {
+        list.push({
+          typeName: '选择题',
+          "typeDesc": typeDescArr.value.selectDesc,
+          "quesId": testArr.value.filter(item => item.types === '选择题').map(item => item.id)
+        })
+      }
+      if (testArr.value.findIndex(item => item.types === '填空题') !== -1) {
+        list.push({
+          "typeName": "填空题",
+          "typeDesc": typeDescArr.value.gapDesc,
+          "quesId": testArr.value.filter(item => item.types === '填空题').map(item => item.id)
+        })
+      }
+      if (testArr.value.findIndex(item => item.types === '简答题') !== -1) {
+        list.push({
+          "typeName": "计算题",
+          "typeDesc": typeDescArr.value.answerDesc,
+          "quesId": testArr.value.filter(item => item.types === '简答题').map(item => item.id)
+        })
+      }
+      if (testArr.value.findIndex(item => item.types === '证明题') !== -1) {
+        list.push({
+          "typeName": "证明题",
+          "typeDesc": typeDescArr.value.proveDesc,
+          "quesId": testArr.value.filter(item => item.types === '证明题').map(item => item.id)
+        })
+      }
+      testFormVisible.value = false
+      try {
+        axios.post('/api/questions/buildTest', JSON.parse(JSON.stringify({
+          title: testForm.value,
+          list: list
+        }))).then(res => {
+          if (res.data.code === 200) {
+            ElNotification({
+              title: '试卷组建成功,请到浏览器下载文件夹查看试卷',
+              type: 'success'
+            });
+            downloadFile(res.data.data)
+          } else {
+            ElNotification({
+              title: '试卷组建失败',
+              type: 'error'
+            })
+          }
+        });
+      } catch (e) {
+        ElNotification.error({
+          title: '网络错误',
+          message: '无法连接到服务器',
+        });
+      }
     }
-  });
+  })
 }// 生成试卷
 const clearTest = () => {
   testArr.value.forEach((item) => {
     removeTest(item)
   })
 } //点击清空组卷列表中的试题
+const searchQuestion = () => {
+  if (search.value === '') {
+    freshTable();
+  } else {
+    axios.post('/api/questions/page',JSON.parse(JSON.stringify({
+      page: 1,
+      pageSize: 100,
+      queryKeyword: search.value,
+      filterKey: 'ques_cour',
+      filterValue: [currentCourse.value.courseId]
+    }))).then(res => {
+      if (res.data.code === 200) {
+        // 获取成功后先清空列表
+        tableData.value = []
+        multipleSelection.value.questionList = []
+        multipleSelection.value.folderList = []
+        getFolder()
+        // 将获取的题目数据全部传入题目数组
+        questionArr.value = res.data.data.list
+        // 将返回的数据遍历push到tableData,判断是否有题目
+        console.log(questionArr.value)
+        if (questionArr.value) {
+          for (let i = 0; i < questionArr.value.length; i++) {
+            questionArr.value[i].index = tableData.value.length + 1
+            tableData.value.push(questionArr.value[i])
+          }
+        }
+        // 记录数据库中所有题目加上文件夹的数目
+        count.value = res.data.data.count + folderArr.value.length
+        // 通过比较得知是否还有能加载的题目,加上文件夹数量，不然会漏题。
+        isLoading.value = false
+        // 处理后将loading状态解锁
+        loading.value = false
+      }else if (storage.get('isAuthenticated')){
+        ElNotification({
+          title: '未查询到该课程的题目',
+          type: 'warning',
+          duration: 0
+        });
+        loading.value = false
+      }
+    })
+  }
+}
 
 
 onBeforeUnmount(() =>{
@@ -598,7 +648,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
       <el-table-column prop="hard" sortable label="难易" />
       <el-table-column fixed="right" min-width="160">
         <template #header>
-          <el-input v-model="search" size="small" placeholder="输入题目关键字" />
+          <el-input v-model="search" size="small" placeholder="输入题目关键字" :prefix-icon="Search" @input="searchQuestion()"/>
         </template>
         <template  #default="{ row,}">
           <el-button link type="primary" size="small" @click="handleClick(row)">编辑</el-button>
@@ -681,6 +731,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
              @closed="() =>  dialogForm = {}">
     <el-form
         style="max-width: 600px"
+        ref="formRef"
         :model="testForm"
         :rules="rules"
         label-width="auto"
@@ -691,8 +742,8 @@ creatEventListener(); // 页面创建时开始监听页面高度
       <el-form-item label="试卷科目" prop="subject">
         <el-input v-model="testForm.subject" />
       </el-form-item>
-      <el-form-item label="班级" prop="class">
-        <el-input v-model="testForm.class" />
+      <el-form-item label="班级" prop="classs">
+        <el-input v-model="testForm.classs" />
       </el-form-item>
       <el-form-item label="考试时长" prop="time">
         <el-input v-model="testForm.time" />
@@ -838,7 +889,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
           </draggable>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="testFormVisible = false; creatTest()">
+        <el-button type="primary" @click="createTest()">
           创建
         </el-button>
         <el-button @click="testFormVisible = false">取消</el-button>

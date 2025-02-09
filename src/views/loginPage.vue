@@ -131,7 +131,7 @@ const login = () => {
   const form = unref(formRef)
   form.validate(valid => {
     if (valid) {
-      axios.post('http://8.210.230.249:8888/doLogin', JSON.parse(JSON.stringify({
+      axios.post('/api/doLogin', JSON.parse(JSON.stringify({
             username: loginForm.value.username,
             password: loginForm.value.password,
             'remember-me': rememberMe.value[0],
@@ -170,7 +170,7 @@ const login = () => {
   })
 }
 const register1 = () => {
-  axios.post('http://8.210.230.249:8888/user/addUser',JSON.parse(JSON.stringify({
+  axios.post('/api/user/addUser',JSON.parse(JSON.stringify({
     nickname: registerForm.value.nickname,
     username: registerForm.value.username,
     password: registerForm.value.password,
@@ -193,7 +193,7 @@ const register1 = () => {
   })
 }
 const getVcimg = () => {
-  axios.get('http://8.210.230.249:8888/vcimg').then(res => {
+  axios.get('/api/vcimg').then(res => {
     decodePwd.value = 'data:image/jpeg;base64,' + res.data.data
   })
 }
