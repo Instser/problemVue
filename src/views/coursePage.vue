@@ -4,7 +4,7 @@ import axios from "axios";
 import router from "@/router/router";
 import {storage} from "@/storage/storage";
 import {ElNotification} from "element-plus";
-import {Plus, Edit, Delete, User, View, InfoFilled, Bottom, Select} from "@element-plus/icons-vue";
+import {Plus, Edit, Delete, User, View, InfoFilled, Bottom, Select, School} from "@element-plus/icons-vue";
 
 const tableData = ref([])
 const params = ref({
@@ -189,25 +189,38 @@ onBeforeUnmount(() => {
     </div>
     <el-dialog v-model="courseDialogVisible"
                title="创建课程"
-               width="500"
+               width="550"
                align-center
                :close-on-click-modal="false"
                class="custom-dialog"
                @closed="() =>  dialogForm = {}">
-      <el-form :model="dialogForm" label-position="top">
-        <el-form-item label="课程名称">
-          <el-input v-model="dialogForm.name" autocomplete="off" placeholder="请输入课程名称" />
-        </el-form-item>
-        <el-form-item label="课程描述">
-          <el-input
-            v-model="dialogForm.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入课程描述"
-            resize="none"
-          />
-        </el-form-item>
-      </el-form>
+      <div class="course-form-container">
+        <div class="form-header">
+          <el-icon class="icon"><School /></el-icon>
+          <h3 class="title">课程信息</h3>
+        </div>
+
+        <el-form :model="dialogForm" label-position="top">
+          <el-form-item label="课程名称">
+            <el-input
+              v-model="dialogForm.name"
+              autocomplete="off"
+              placeholder="请输入课程名称"
+              prefix-icon="Reading"
+            />
+          </el-form-item>
+          <el-form-item label="课程描述">
+            <el-input
+              v-model="dialogForm.description"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入课程描述信息，如课程内容、学时等"
+              resize="none"
+            />
+          </el-form-item>
+        </el-form>
+      </div>
+
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="courseDialogVisible = false">取消</el-button>
@@ -220,14 +233,17 @@ onBeforeUnmount(() => {
     </el-dialog>
     <el-dialog v-model="teacherDialogVisible"
                title="管理任课老师"
-               width="500"
+               width="550"
                align-center
                :close-on-click-modal="false"
                class="custom-dialog"
                @closed="() =>  teacherForm = []">
       <div class="teacher-manager">
         <div class="teacher-list">
-          <div class="section-title">当前任课老师</div>
+          <div class="section-title">
+            <el-icon class="icon current-icon"><User /></el-icon>
+            <span>当前任课老师</span>
+          </div>
           <div class="teacher-tags">
             <template v-if="teacherForm.length > 0">
               <el-tag
@@ -240,7 +256,8 @@ onBeforeUnmount(() => {
                   type="success"
                   effect="light"
               >
-                {{ item }}
+                <el-icon><User /></el-icon>
+                <span style="margin-left: 5px">{{ item }}</span>
               </el-tag>
             </template>
             <el-empty v-else description="暂无任课老师" :image-size="100"></el-empty>
@@ -248,7 +265,10 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="add-teacher">
-          <div class="section-title">添加新老师</div>
+          <div class="section-title">
+            <el-icon class="icon add-icon"><Plus /></el-icon>
+            <span>添加新老师</span>
+          </div>
           <div class="input-container">
             <el-input
                 v-if="inputVisible"
@@ -257,6 +277,7 @@ onBeforeUnmount(() => {
                 placeholder="输入老师名称后回车确认"
                 @keyup.enter="handleInputConfirm"
                 @blur="handleInputConfirm"
+                prefix-icon="User"
             >
               <template #append>
                 <el-button @click="handleInputConfirm">添加</el-button>
@@ -278,25 +299,38 @@ onBeforeUnmount(() => {
     </el-dialog>
     <el-dialog v-model="course1DialogVisible"
                title="修改课程"
-               width="500"
+               width="550"
                align-center
                :close-on-click-modal="false"
                class="custom-dialog"
                @closed="() =>  dialogForm = {}">
-      <el-form :model="dialogForm" label-position="top">
-        <el-form-item label="课程名称">
-          <el-input v-model="dialogForm.name" autocomplete="off" placeholder="请输入课程名称" />
-        </el-form-item>
-        <el-form-item label="课程描述">
-          <el-input
-            v-model="dialogForm.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入课程描述"
-            resize="none"
-          />
-        </el-form-item>
-      </el-form>
+      <div class="course-form-container">
+        <div class="form-header">
+          <el-icon class="icon"><Edit /></el-icon>
+          <h3 class="title">编辑课程信息</h3>
+        </div>
+
+        <el-form :model="dialogForm" label-position="top">
+          <el-form-item label="课程名称">
+            <el-input
+              v-model="dialogForm.name"
+              autocomplete="off"
+              placeholder="请输入课程名称"
+              prefix-icon="Reading"
+            />
+          </el-form-item>
+          <el-form-item label="课程描述">
+            <el-input
+              v-model="dialogForm.description"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入课程描述信息，如课程内容、学时等"
+              resize="none"
+            />
+          </el-form-item>
+        </el-form>
+      </div>
+
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="course1DialogVisible = false">取消</el-button>
@@ -689,12 +723,34 @@ onBeforeUnmount(() => {
     }
   }
 
+  .form-header-icon {
+    font-size: 24px;
+    margin-right: 8px;
+    vertical-align: middle;
+    color: var(--primary-color);
+  }
+
   .teacher-manager {
     .section-title {
       font-size: 16px;
       font-weight: 500;
       margin-bottom: 12px;
       color: var(--text-primary);
+      display: flex;
+      align-items: center;
+
+      .icon {
+        margin-right: 8px;
+        font-size: 20px;
+
+        &.current-icon {
+          color: var(--success-color);
+        }
+
+        &.add-icon {
+          color: var(--primary-color);
+        }
+      }
     }
 
     .teacher-list {
@@ -705,7 +761,7 @@ onBeforeUnmount(() => {
         flex-wrap: wrap;
         gap: 8px;
         min-height: 100px;
-        padding: 12px;
+        padding: 16px;
         background-color: var(--background-color);
         border-radius: 8px;
       }
@@ -725,7 +781,31 @@ onBeforeUnmount(() => {
           align-items: center;
           justify-content: center;
           gap: 5px;
+          height: 40px;
         }
+      }
+    }
+  }
+
+  .course-form-container {
+    .form-header {
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+
+      .icon {
+        font-size: 24px;
+        margin-right: 12px;
+        color: var(--primary-color);
+      }
+
+      .title {
+        font-size: 18px;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin: 0;
       }
     }
   }

@@ -2,7 +2,7 @@
 import {onBeforeUnmount, ref, unref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
-import {ArrowDown, Search, Folder, Edit, Document, Delete, RemoveFilled, Reading, Plus, Remove, Bottom, InfoFilled, Select} from "@element-plus/icons-vue";
+import {ArrowDown, Search, Folder, Edit, Document, Delete, RemoveFilled, Reading, Plus, Remove, Bottom, InfoFilled, Select, Loading, CircleCheckFilled, Download, CopyDocument} from "@element-plus/icons-vue";
 import {ElNotification} from "element-plus";
 import {storage} from "@/storage/storage";
 import draggable from 'vue-draggable-next'
@@ -798,17 +798,37 @@ creatEventListener(); // 页面创建时开始监听页面高度
              width="500"
              align-center
              :close-on-click-modal="false"
+             class="custom-dialog"
              @closed="() =>  dialogForm = {}">
-    <el-form :model="dialogForm">
-      <el-form-item label="文件夹名" :label-width="150">
-        <el-input v-model="dialogForm.name" autocomplete="off"/>
+    <el-form :model="dialogForm" label-position="top">
+      <el-form-item label="文件夹名称">
+        <el-input
+          v-model="dialogForm.name"
+          autocomplete="off"
+          placeholder="请输入文件夹名称"
+        />
       </el-form-item>
-      <el-form-item label="描述" :label-width="150">
-        <el-input v-model="dialogForm.desc" autocomplete="off"/>
+      <el-form-item label="文件夹描述">
+        <el-input
+          v-model="dialogForm.desc"
+          type="textarea"
+          :rows="3"
+          placeholder="请输入文件夹描述"
+          resize="none"
+        />
       </el-form-item>
-      <el-form-item label="课程" :label-width="150">
-        <el-select v-model="dialogForm.courseId" placeholder="选择课程">
-          <el-option v-for="item in courseArr" :label="item.name" :key="item.id" :value="item.id"/>
+      <el-form-item label="所属课程">
+        <el-select
+          v-model="dialogForm.courseId"
+          placeholder="请选择课程"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="item in courseArr"
+            :label="item.name"
+            :key="item.id"
+            :value="item.id"
+          />
         </el-select>
       </el-form-item>
     </el-form>
@@ -816,29 +836,60 @@ creatEventListener(); // 页面创建时开始监听页面高度
       <div class="dialog-footer">
         <el-button @click="folderDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="folderDialogVisible = false; creatFolder()">
-          创建
+          <el-icon><Plus /></el-icon>
+          <span>创建文件夹</span>
         </el-button>
       </div>
     </template>
   </el-dialog>
   <el-dialog v-model="addToFolderVisible"
-             title="批量添加选中的试题到文件夹"
+             title="批量添加试题到文件夹"
              width="500"
              align-center
              :close-on-click-modal="false"
+             class="custom-dialog"
              @closed="() =>  addToFolderForm = {}">
-    <el-form :model="addToFolderForm">
-      <el-form-item label="文件夹" :label-width="150">
-        <el-select v-model="addToFolderForm.folderId" placeholder="选择文件夹">
-          <el-option v-for="item in folderArr" :label="item.name" :key="item.id" :value="item.id"/>
+    <div class="selected-info" v-if="multipleSelection.questionList.length > 0">
+      <el-alert
+        title="已选择试题信息"
+        type="info"
+        :closable="false"
+        show-icon
+      >
+        <div class="selected-count">
+          当前已选择 <span class="count-highlight">{{ multipleSelection.questionList.length }}</span> 道试题
+        </div>
+      </el-alert>
+    </div>
+
+    <el-form :model="addToFolderForm" label-position="top" class="mt-20">
+      <el-form-item label="选择目标文件夹">
+        <el-select
+          v-model="addToFolderForm.folderId"
+          placeholder="请选择要添加到的文件夹"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="item in folderArr"
+            :label="item.name"
+            :key="item.id"
+            :value="item.id"
+          >
+            <div class="folder-option">
+              <el-icon class="folder-icon"><Folder /></el-icon>
+              <span>{{ item.name }}</span>
+            </div>
+          </el-option>
         </el-select>
       </el-form-item>
     </el-form>
+
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="addToFolderVisible = false">取消</el-button>
         <el-button type="primary" @click="addToFolderVisible = false; addToFolder()">
-          确定
+          <el-icon><CopyDocument /></el-icon>
+          <span>添加到文件夹</span>
         </el-button>
       </div>
     </template>
@@ -848,14 +899,28 @@ creatEventListener(); // 页面创建时开始监听页面高度
              title="创建试卷"
              width="800"
              :close-on-click-modal="false"
+             class="custom-dialog test-paper-dialog"
              @closed="() =>  dialogForm = {}">
+    <div class="selected-info" v-if="testArr.length > 0">
+      <el-alert
+        title="已选择试题信息"
+        type="success"
+        :closable="false"
+        show-icon
+      >
+        <div class="selected-count">
+          当前已选择 <span class="count-highlight">{{ testArr.length }}</span> 道试题组建试卷
+        </div>
+      </el-alert>
+    </div>
+
     <el-form
-        style="max-width: 600px"
+        style="max-width: 100%"
         ref="formRef"
         :model="testForm"
         :rules="rules"
-        label-width="auto"
-        class="demo-ruleForm"
+        label-position="top"
+        class="test-form mt-20"
         :size="'default'"
         status-icon
     >
@@ -1009,10 +1074,13 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </draggable>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="createTest()">
-          创建
-        </el-button>
-        <el-button @click="testFormVisible = false">取消</el-button>
+        <div class="form-actions">
+          <el-button @click="testFormVisible = false">取消</el-button>
+          <el-button type="primary" @click="createTest()">
+            <el-icon><Document /></el-icon>
+            <span>生成试卷</span>
+          </el-button>
+        </div>
       </el-form-item>
     </el-form>
   </el-dialog>
@@ -1020,27 +1088,45 @@ creatEventListener(); // 页面创建时开始监听页面高度
   <el-dialog
       :model-value="progressVisible"
       title="试卷生成中"
-      width="30%"
+      width="400px"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
       :show-close="false"
+      class="custom-dialog progress-dialog"
   >
-    <el-progress
-        :percentage="progressPercent"
-        :format="(percent) => `${Math.round(percent)}%`"
-        :stroke-width="16"
-        :text-inside="true"
-        status="success"
-        striped
-        striped-flow
-    />
+    <div class="progress-container">
+      <div class="progress-icon" v-if="progressPercent < 100">
+        <el-icon class="loading-icon"><Loading /></el-icon>
+      </div>
+      <div class="progress-icon success-icon" v-else>
+        <el-icon><CircleCheckFilled /></el-icon>
+      </div>
+
+      <el-progress
+          :percentage="progressPercent"
+          :format="(percent) => `${Math.round(percent)}%`"
+          :stroke-width="16"
+          :text-inside="true"
+          :status="progressPercent < 100 ? 'primary' : 'success'"
+          striped
+          striped-flow
+      />
+
+      <div class="progress-text">
+        {{ progressPercent < 100 ? '正在生成试卷，请稍候...' : '试卷生成完成！' }}
+      </div>
+    </div>
+
     <template #footer>
       <el-button
-          type="danger"
+          :type="progressPercent < 100 ? 'info' : 'success'"
           :disabled="progressPercent < 100"
           @click="progressVisible = false;progressPercent = 0;"
+          class="progress-button"
       >
-        {{ progressPercent < 100 ? '生成中...' : '完成' }}
+        <el-icon v-if="progressPercent < 100"><Loading /></el-icon>
+        <el-icon v-else><Download /></el-icon>
+        <span>{{ progressPercent < 100 ? '生成中...' : '下载试卷' }}</span>
       </el-button>
     </template>
   </el-dialog>
@@ -1271,29 +1357,178 @@ creatEventListener(); // 页面创建时开始监听页面高度
   display: none;
 }
 
-:deep(.el-dialog) {
-  border-radius: 8px;
-  overflow: hidden;
+.mt-20 {
+  margin-top: 20px;
+}
 
-  .el-dialog__header {
-    background-color: var(--primary-color);
-    color: white;
-    padding: 15px 20px;
-    margin: 0;
+.custom-dialog {
+  :deep(.el-dialog) {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
 
-    .el-dialog__title {
+    .el-dialog__header {
+      background-color: var(--primary-color);
       color: white;
-      font-weight: 500;
+      padding: 15px 20px;
+      margin: 0;
+
+      .el-dialog__title {
+        color: white;
+        font-weight: 600;
+        font-size: 18px;
+      }
+
+      .el-dialog__headerbtn {
+        .el-dialog__close {
+          color: white;
+          font-size: 18px;
+
+          &:hover {
+            color: #f2f2f2;
+          }
+        }
+      }
+    }
+
+    .el-dialog__body {
+      padding: 24px;
+    }
+
+    .el-dialog__footer {
+      padding: 10px 24px 24px;
+      border-top: 1px solid var(--border-light);
     }
   }
 
-  .el-dialog__body {
-    padding: 20px;
+  .dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+
+    .el-button {
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
   }
 
-  .el-dialog__footer {
-    padding: 10px 20px 20px;
-    border-top: 1px solid var(--border-light);
+  .selected-info {
+    margin-bottom: 20px;
+
+    .selected-count {
+      margin-top: 5px;
+      font-size: 14px;
+
+      .count-highlight {
+        color: var(--primary-color);
+        font-weight: bold;
+        font-size: 16px;
+      }
+    }
+  }
+
+  .folder-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .folder-icon {
+      color: #E6A23C;
+    }
+  }
+
+  &.test-paper-dialog {
+    .test-form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+
+      .el-form-item {
+        margin-bottom: 16px;
+      }
+
+      // 让某些表单项占据整行
+      .el-form-item:nth-child(5),
+      .el-form-item:nth-child(11),
+      .el-form-item:nth-child(12),
+      .el-form-item:nth-child(13),
+      .el-form-item:nth-child(14),
+      .el-form-item:nth-child(15),
+      .el-form-item:nth-child(16),
+      .el-form-item:nth-child(17),
+      .el-form-item:nth-child(18),
+      .el-form-item:last-child {
+        grid-column: span 2;
+      }
+
+      .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 16px;
+
+        .el-button {
+          padding: 10px 20px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+      }
+    }
+  }
+
+  &.progress-dialog {
+    .progress-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 0;
+
+      .progress-icon {
+        font-size: 48px;
+        color: var(--primary-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        &.success-icon {
+          color: var(--success-color);
+        }
+
+        .loading-icon {
+          animation: spin 1.5s linear infinite;
+        }
+      }
+
+      .progress-text {
+        margin-top: 10px;
+        font-size: 16px;
+        color: var(--text-regular);
+        text-align: center;
+      }
+    }
+
+    .progress-button {
+      width: 100%;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 16px;
+    }
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 
