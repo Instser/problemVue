@@ -1,24 +1,25 @@
 <template>
   <div id="app">
-    <router-view></router-view>
+    <router-view v-slot="{ Component }">
+      <transition name="fade" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
   </div>
 </template>
 
 <script>
-
-
 export default {
   name: 'App',
-  components: {
-  }
+  components: {}
 }
 </script>
 
 <style lang="less">
-html,body,h3 {
-  margin: 0;
-  padding: 0;
-  font-size: 16px;
-  font-weight: 400;
+@import './assets/styles/global.less';
+
+#app {
+  width: 100%;
+  height: 100%;
 }
 </style>
