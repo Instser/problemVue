@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from 'vue-router';
 import { storage } from "@/storage/storage";
+import axios from 'axios';
 
 const router = useRouter();
 const username = ref(storage.get('username') || '用户');
@@ -47,21 +48,21 @@ const getWelcomeTime = () => {
   }
 };
 
-// 模拟获取统计数据
-// 实际项目中应该从后端获取这些数据
-const getStatistics = () => {
-  // 模拟数据
-  statistics.value = {
-    questionCount: 125,
-    courseCount: 8,
-    folderCount: 15,
-    lastLoginTime: '2023-05-20 14:30:22'
-  };
+// 获取统计数据
+const getStatistics = async () => {
+  try {
+    const res = await axios.get('/api/user/statistics');
+    if (res.data.code === 200) {
+      statistics.value = res.data.data;
+    }
+  } catch (error) {
+    console.error('Failed to fetch statistics:', error);
+  }
 };
 
 onMounted(() => {
-  getWelcomeTime();
   getStatistics();
+  getWelcomeTime();
 });
 </script>
 
@@ -146,7 +147,7 @@ onMounted(() => {
           </div>
         </template>
         <div class="announcement-content">
-          <p>尊敬的用户，试题管理系统已完成界面优化，提供更好的用户体验。如有任何问题，请及时反馈。</p>
+          <p>愚蠢的伟</p>
           <p class="announcement-date">2023-06-01</p>
         </div>
       </el-card>

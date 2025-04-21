@@ -137,18 +137,18 @@ const logout = () => {
 };
 
 // 获取用户信息
-const getUserInfo = () => {
-  // 实际项目中应该从后端获取用户信息
-  // 这里使用模拟数据
-  userInfo.value = {
-    username: storage.get('username') || '用户',
-    role: storage.get('role') === 'admin' ? '管理员' : '教师',
-    lastLogin: '2023-06-01 10:30:45',
-    email: '1027691813@qq.com',
-    college: '计算机学院',
-    createdTime: '2023-01-15',
-    nickname: '用户昵称'
-  };
+const getUserInfo = async () => {
+  try {
+    const res = await axios.get('/api/user/info');
+    if (res.data.code === 200) {
+      userInfo.value = {
+        ...res.data.data,
+        role: storage.get('role') === 'admin' ? '管理员' : '教师'
+      };
+    }
+  } catch (error) {
+    console.error('Failed to fetch user info:', error);
+  }
 };
 
 onMounted(() => {
