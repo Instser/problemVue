@@ -2,7 +2,7 @@
 import {onBeforeUnmount, ref, unref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
-import {ArrowDown, Search} from "@element-plus/icons-vue";
+import {ArrowDown, Search, Folder, Edit, Document, Delete, RemoveFilled, Reading, Plus, Remove, Bottom, InfoFilled} from "@element-plus/icons-vue";
 import {ElNotification} from "element-plus";
 import {storage} from "@/storage/storage";
 import draggable from 'vue-draggable-next'
@@ -614,95 +614,170 @@ creatEventListener(); // 页面创建时开始监听页面高度
 </script>
 
 <template>
-  <div class="header_div">
-    <el-button type="primary" round @click="folderDialogVisible = true">创建文件夹</el-button>
-    <el-button type="primary" round @click="() => router.push('/edit')">创建试题</el-button>
-    <el-button round icon="CopyDocument" @click="addToFolderVisible = true">添加试题到文件夹</el-button>
-    <el-button round icon="Delete" @click="deleteEvent">批量删除</el-button>
-    <el-dropdown>
-      <el-button round>
-        {{ currentCourse.courseName }}
-        <el-icon class="el-icon--right">
-          <arrow-down/>
-        </el-icon>
-      </el-button>
-      <template #dropdown>
-        <el-dropdown-menu>
-          <el-dropdown-item v-for="courseItem in courseArr" :key='courseItem.id' @click="courseSelect(courseItem)">
-            {{ courseItem.name }}
-          </el-dropdown-item>
-        </el-dropdown-menu>
-      </template>
-    </el-dropdown>
-    <el-col :span="6">
-      <el-statistic title="已选题目" :value="testArr.length"/>
-    </el-col>
-    <el-button type="primary" @click="testFormVisible = true"
-    >创建试卷
-    </el-button>
-    <el-button type="primary" @click="clearTest()"
-    >清空已选择试题
-    </el-button>
-  </div>
-  <div>
-    <el-table :data="tableData"
-              :ref="tableRef"
-              stripe
-              border
-              style="width: 100%"
-              table-layout="auto"
-              @selection-change="handleSelectionChange"
-              v-model:aria-selected="multipleSelection"
-              empty-text="没有数据"
-              :max-height="fullHeight"
-              lazy
-              row-key="index"
-              :load="lazyLoadQuestion"
-              :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
-    >
+  <div class="app-card main-container">
+    <div class="header-actions">
+      <div class="left-actions">
+        <el-button type="primary" @click="folderDialogVisible = true">
+          <el-icon><Folder /></el-icon>
+          <span>创建文件夹</span>
+        </el-button>
+        <el-button type="primary" @click="() => router.push('/edit')">
+          <el-icon><Edit /></el-icon>
+          <span>创建试题</span>
+        </el-button>
+        <el-button @click="addToFolderVisible = true">
+          <el-icon><CopyDocument /></el-icon>
+          <span>添加试题到文件夹</span>
+        </el-button>
+        <el-button @click="deleteEvent" type="danger">
+          <el-icon><Delete /></el-icon>
+          <span>批量删除</span>
+        </el-button>
+      </div>
+
+      <div class="right-actions">
+        <el-dropdown class="course-dropdown">
+          <el-button>
+            <el-icon><Reading /></el-icon>
+            {{ currentCourse.courseName }}
+            <el-icon class="el-icon--right"><arrow-down/></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item v-for="courseItem in courseArr" :key='courseItem.id' @click="courseSelect(courseItem)">
+                {{ courseItem.name }}
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+
+        <div class="test-actions">
+          <el-statistic title="已选题目" :value="testArr.length" class="test-statistic"/>
+          <el-button type="success" @click="testFormVisible = true">
+            <el-icon><Document /></el-icon>
+            <span>创建试卷</span>
+          </el-button>
+          <el-button @click="clearTest()">
+            <el-icon><RemoveFilled /></el-icon>
+            <span>清空已选题目</span>
+          </el-button>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-container">
+      <el-input v-model="search" placeholder="输入题目关键字搜索" class="search-input">
+        <template #prefix>
+          <el-icon><Search /></el-icon>
+        </template>
+        <template #append>
+          <el-button @click="searchQuestion">搜索</el-button>
+        </template>
+      </el-input>
+    </div>
+
+    <div class="table-container">
+      <el-table :data="tableData"
+                :ref="tableRef"
+                stripe
+                border
+                style="width: 100%"
+                table-layout="auto"
+                @selection-change="handleSelectionChange"
+                v-model:aria-selected="multipleSelection"
+                empty-text="没有数据"
+                :max-height="fullHeight"
+                lazy
+                row-key="index"
+                :load="lazyLoadQuestion"
+                :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+                class="question-table"
+                :header-cell-style="{backgroundColor: 'var(--primary-light)', color: 'var(--text-primary)', fontWeight: '600'}"
+      >
       <el-table-column fixed type="selection" width='40'/>
-      <el-table-column fixed type="index" width="auto"/>
-      <el-table-column prop="description" label="文件夹/题目" show-overflow-tooltip min-width="600">
-        <template v-slot="scope">
-          <span>{{ scope.row.description }}</span>
+      <el-table-column fixed type="index" width="50" label="序号"/>
+      <el-table-column prop="description" label="文件夹/题目" show-overflow-tooltip min-width="500">
+        <template #default="{row}">
+          <div class="question-title">
+            <el-icon v-if="row.hasChildren" class="folder-icon"><Folder /></el-icon>
+            <el-icon v-else class="question-icon"><Document /></el-icon>
+            <span>{{ row.description }}</span>
+          </div>
         </template>
       </el-table-column>
-      <el-table-column prop="quesCourStr" label="课程"></el-table-column>
-      <el-table-column prop="types" label="题型" sortable/>
-      <el-table-column prop="hard" sortable label="难易"/>
-      <el-table-column fixed="right" min-width="160">
-        <template #header>
-          <el-input v-model="search" size="small" placeholder="输入题目关键字" :prefix-icon="Search"
-                    @input="searchQuestion()"/>
+      <el-table-column prop="quesCourStr" label="课程" width="120">
+        <template #default="{row}">
+          <el-tag size="small" type="info" v-if="row.quesCourStr">{{ row.quesCourStr }}</el-tag>
         </template>
-        <template #default="{ row,}">
-          <el-button link type="primary" size="small" @click="handleClick(row)">编辑</el-button>
-          <el-button link type="primary" size="small" @click="addTest(row)"
-                     v-if="!row.hasChildren && row.description && !row.inTest">加入试卷
-          </el-button>
-          <el-button link type="primary" size="small" @click="removeTest(row)"
-                     v-if="!row.hasChildren && row.description && row.inTest === true">移出试卷
-          </el-button>
+      </el-table-column>
+      <el-table-column prop="types" label="题型" sortable width="100">
+        <template #default="{row}">
+          <el-tag size="small" type="success" v-if="row.types">{{ row.types }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="hard" sortable label="难易度" width="100">
+        <template #default="{row}">
+          <el-tag
+            size="small"
+            :type="row.hard === '简单' ? 'success' : row.hard === '中等' ? 'warning' : 'danger'"
+            v-if="row.hard"
+          >
+            {{ row.hard }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column fixed="right" min-width="180" label="操作">
+        <template #default="{ row }">
+          <div class="action-buttons">
+            <el-button link type="primary" size="small" @click="handleClick(row)">
+              <el-icon><Edit /></el-icon>
+              <span>编辑</span>
+            </el-button>
+            <el-button link type="success" size="small" @click="addTest(row)"
+                      v-if="!row.hasChildren && row.description && !row.inTest">
+              <el-icon><Plus /></el-icon>
+              <span>加入试卷</span>
+            </el-button>
+            <el-button link type="danger" size="small" @click="removeTest(row)"
+                      v-if="!row.hasChildren && row.description && row.inTest === true">
+              <el-icon><Remove /></el-icon>
+              <span>移出试卷</span>
+            </el-button>
+          </div>
         </template>
       </el-table-column>
       <template v-slot:append>
         <div class="buttonDiv">
-          <p>总共有{{ count }}条数据</p>
-          <el-button style="" :loading="loading" :disabled="loading" v-if="isLoading" @click="loadData" link
-                     type="primary" size="large">加载题目
+          <p>总共有 <span class="count-highlight">{{ count }}</span> 条数据</p>
+          <el-button :loading="loading" :disabled="loading" v-if="isLoading" @click="loadData"
+                     type="primary" size="default" class="load-more-btn">
+            <el-icon><Bottom /></el-icon>
+            <span>加载更多题目</span>
           </el-button>
         </div>
       </template>
-    </el-table>
-    <div class="demo-pagination-block">
-      <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageParams.pageSize"
-          :page-sizes="[20]"
-          :background="true"
-          layout=""
-          :total="count"
-      />
+      </el-table>
+
+      <div class="table-footer">
+        <div class="data-summary">
+          <el-tag type="info" effect="plain" class="summary-tag">
+            <el-icon><InfoFilled /></el-icon>
+            <span>当前页显示 {{ tableData.length }} 条数据</span>
+          </el-tag>
+        </div>
+
+        <div class="demo-pagination-block">
+          <el-pagination
+              v-model:current-page="currentPage"
+              v-model:page-size="pageParams.pageSize"
+              :page-sizes="[10, 20, 50]"
+              :background="true"
+              layout="total, sizes, prev, pager, next"
+              :total="count || 0"
+              class="custom-pagination"
+          />
+        </div>
+      </div>
     </div>
   </div>
   <el-dialog v-model="folderDialogVisible"
@@ -956,78 +1031,254 @@ creatEventListener(); // 页面创建时开始监听页面高度
       </el-button>
     </template>
   </el-dialog>
-
 </template>
 
-<style scoped>
-.demo-pagination-block + .demo-pagination-block {
-  margin-top: 10px;
+<style lang="less" scoped>
+.main-container {
+  padding: 20px;
+  margin-bottom: 20px;
 }
 
-.demo-pagination-block .demonstration {
+.header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+
+  .left-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    .el-button {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+  }
+
+  .right-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+
+    .course-dropdown {
+      margin-right: 10px;
+    }
+
+    .test-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .test-statistic {
+      width: 100px;
+      margin-right: 10px;
+      padding: 0 10px;
+      background-color: var(--primary-light);
+      border-radius: 4px;
+    }
+  }
+}
+
+.search-container {
   margin-bottom: 16px;
+
+  .search-input {
+    width: 100%;
+    max-width: 500px;
+    transition: all 0.3s;
+
+    &:focus-within {
+      box-shadow: 0 0 0 2px var(--primary-light);
+    }
+  }
 }
 
-.input-with-select .el-input-group__prepend {
-  background-color: var(--el-fill-color-blank);
+.table-container {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+  transition: all 0.3s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  .el-table {
+    margin-bottom: 0;
+
+    .question-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .folder-icon {
+        color: #E6A23C;
+      }
+
+      .question-icon {
+        color: var(--primary-color);
+      }
+    }
+  }
+
+  .table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: var(--background-color);
+    border-top: 1px solid var(--border-light);
+
+    .data-summary {
+      .summary-tag {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 10px;
+      }
+    }
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+
+    .el-button {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      &:hover {
+        background-color: var(--primary-light);
+        border-radius: 4px;
+      }
+    }
+  }
+}
+
+.demo-pagination-block {
+  display: flex;
+  justify-content: flex-end;
+
+  .el-pagination {
+    padding: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+    .el-pager li {
+      background-color: white;
+
+      &.is-active {
+        background-color: var(--primary-color);
+        color: white;
+        font-weight: bold;
+      }
+
+      &:hover:not(.is-active) {
+        color: var(--primary-color);
+      }
+    }
+
+    .btn-prev, .btn-next {
+      background-color: white;
+
+      &:hover {
+        color: var(--primary-color);
+      }
+    }
+  }
 }
 
 .buttonDiv {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 40px;
-}
-
-/deep/ .el-table__placeholder {
-  display: none
-}
-
-.header_div {
   height: 50px;
-  display: flex;
-  align-items: center;
+  color: var(--text-secondary);
+  gap: 16px;
+
+  .count-highlight {
+    color: var(--primary-color);
+    font-weight: bold;
+  }
+
+  .load-more-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 16px;
+    transition: all 0.3s;
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+  }
 }
 
-.header_div > button {
-  margin-right: 10px;
+:deep(.el-table__placeholder) {
+  display: none;
 }
 
-.el-col {
-  margin-left: auto;
-  text-align: center;
+:deep(.el-dialog) {
+  border-radius: 8px;
+  overflow: hidden;
+
+  .el-dialog__header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 15px 20px;
+    margin: 0;
+
+    .el-dialog__title {
+      color: white;
+      font-weight: 500;
+    }
+  }
+
+  .el-dialog__body {
+    padding: 20px;
+  }
+
+  .el-dialog__footer {
+    padding: 10px 20px 20px;
+    border-top: 1px solid var(--border-light);
+  }
 }
 
-/deep/ .el-statistic {
-  width: 80px;
-  margin-left: auto;
-}
-
-.ghost {
-  border: solid 1px rgb(19, 41, 239);
-}
-
-.chosenClass {
-  background-color: #f1f1f1;
-}
-
-/deep/ .el-tag {
+:deep(.el-tag) {
   display: flex;
   align-items: center;
   justify-content: space-between;
   max-width: 150px;
   overflow: hidden;
+  margin-bottom: 5px;
+
+  .el-tag__content {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-grow: 1;
+  }
+
+  .el-tag__close {
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
 }
 
-/deep/ .el-tag .el-tag__content {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-grow: 1;
+.ghost {
+  border: solid 1px var(--primary-color);
 }
 
-/deep/ .el-tag .el-tag__close {
-  flex-shrink: 0;
-  margin-left: 8px;
+.chosenClass {
+  background-color: var(--primary-light);
 }
 </style>
