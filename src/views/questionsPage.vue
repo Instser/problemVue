@@ -2,7 +2,7 @@
 import {onBeforeUnmount, ref, unref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
-import {ArrowDown, Search, Folder, Edit, Document, Delete, RemoveFilled, Reading, Plus, Remove, Bottom, InfoFilled} from "@element-plus/icons-vue";
+import {ArrowDown, Search, Folder, Edit, Document, Delete, RemoveFilled, Reading, Plus, Remove, Bottom, InfoFilled, Select} from "@element-plus/icons-vue";
 import {ElNotification} from "element-plus";
 import {storage} from "@/storage/storage";
 import draggable from 'vue-draggable-next'
@@ -18,7 +18,8 @@ const multipleSelection = ref({
   folderList: [],
   questionList: []
 }) // 多选试题或者文件夹数据
-const currentPage = ref(1) // table的当前页面
+// 不再需要分页，移除currentPage
+// const currentPage = ref(1) // table的当前页面
 const courseArr = ref([]) // 该教师所有课程数据
 const folderArr = ref([]) // 当前页面文件夹数据
 const questionArr = ref([]) // 当前页面试题数据
@@ -377,11 +378,27 @@ const courseSelect = async (courseItem) => {
 } // 切换课程并获取文件夹和题目
 const creatEventListener = () => {
   window.addEventListener('resize', handleResize)
-} //设置页面大小监听器
+  window.addEventListener('scroll', handleScroll)
+} //设置页面大小监听器和滚动监听
+
 const handleResize = () => {
   fullHeight.value = document.documentElement.clientHeight - 110
 } //获取窗口高度
-const lazyLoadQuestion = (row, treeNode, resolve) => {
+
+const handleScroll = () => {
+  // 检查是否滚动到底部附近
+  if (isLoading.value && !loading.value) {
+    const scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+    const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight
+    const clientHeight = document.documentElement.clientHeight || window.innerHeight
+
+    // 当滚动到距离底部200px时加载更多数据
+    if (scrollTop + clientHeight >= scrollHeight - 200) {
+      loadData()
+    }
+  }
+} //滚动加载更多数据
+const lazyLoadQuestion = (row, _treeNode, resolve) => {
   console.log(row.id)
   // 通过文件夹id获取到题目后，将返回去数据插入文件夹对象的children数组中
   axios.post('/api/questions/page', JSON.parse(JSON.stringify({
@@ -392,8 +409,7 @@ const lazyLoadQuestion = (row, treeNode, resolve) => {
     console.log(res.data.data.list)
     if (res.data.data.list) {
       let i = 1
-      // eslint-disable-next-line no-unused-vars
-      res.data.data.list.forEach((item, index) => {
+          res.data.data.list.forEach((item) => {
         item.index = row.index + '-' + i++
       })
       tableData.value[row.index - 1].childrenList = res.data.data.list
@@ -407,8 +423,7 @@ const lazyLoadQuestion = (row, treeNode, resolve) => {
 const creatFolder = () => {
   axios.post('/api/quesFolder/creatFolder', null, {
     params: dialogForm.value
-    // eslint-disable-next-line no-unused-vars
-  }).then(res => {
+    }).then(() => {
     freshTable()
   })
 } // 创建文件夹
@@ -597,6 +612,7 @@ const searchQuestion = () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('scroll', handleScroll)
 });// 组件销毁前解除监听释放内存
 
 creatEventListener(); // 页面创建时开始监听页面高度
@@ -747,13 +763,8 @@ creatEventListener(); // 页面创建时开始监听页面高度
         </template>
       </el-table-column>
       <template v-slot:append>
-        <div class="buttonDiv">
-          <p>总共有 <span class="count-highlight">{{ count }}</span> 条数据</p>
-          <el-button :loading="loading" :disabled="loading" v-if="isLoading" @click="loadData"
-                     type="primary" size="default" class="load-more-btn">
-            <el-icon><Bottom /></el-icon>
-            <span>加载更多题目</span>
-          </el-button>
+        <div class="loading-container" v-if="loading">
+          <el-skeleton :rows="3" animated />
         </div>
       </template>
       </el-table>
@@ -762,20 +773,22 @@ creatEventListener(); // 页面创建时开始监听页面高度
         <div class="data-summary">
           <el-tag type="info" effect="plain" class="summary-tag">
             <el-icon><InfoFilled /></el-icon>
-            <span>当前页显示 {{ tableData.length }} 条数据</span>
+            <span>已加载 <span class="count-highlight">{{ tableData.length }}</span> / {{ count }} 条数据</span>
           </el-tag>
         </div>
 
-        <div class="demo-pagination-block">
-          <el-pagination
-              v-model:current-page="currentPage"
-              v-model:page-size="pageParams.pageSize"
-              :page-sizes="[10, 20, 50]"
-              :background="true"
-              layout="total, sizes, prev, pager, next"
-              :total="count || 0"
-              class="custom-pagination"
-          />
+        <div class="scroll-tip" v-if="isLoading && !loading">
+          <el-tag type="primary" effect="light" class="tip-tag">
+            <el-icon><Bottom /></el-icon>
+            <span>继续滚动加载更多</span>
+          </el-tag>
+        </div>
+
+        <div class="scroll-tip" v-if="!isLoading && tableData.length > 0">
+          <el-tag type="success" effect="light" class="tip-tag">
+            <el-icon><Select /></el-icon>
+            <span>已加载全部数据</span>
+          </el-tag>
         </div>
       </div>
     </div>
@@ -1141,7 +1154,38 @@ creatEventListener(); // 页面创建时开始监听页面高度
         align-items: center;
         gap: 5px;
         padding: 6px 10px;
+
+        .count-highlight {
+          color: var(--primary-color);
+          font-weight: bold;
+        }
       }
+    }
+
+    .scroll-tip {
+      .tip-tag {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 10px;
+        animation: pulse 1.5s infinite;
+      }
+    }
+  }
+
+  .loading-container {
+    padding: 16px;
+  }
+
+  @keyframes pulse {
+    0% {
+      opacity: 0.7;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.7;
     }
   }
 

@@ -1,17 +1,19 @@
 <script setup>
-import {onMounted, ref} from "vue";
+import {onMounted, onBeforeUnmount, ref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
 import {storage} from "@/storage/storage";
 import {ElNotification} from "element-plus";
-import {Plus, Edit, Delete, User, View, InfoFilled} from "@element-plus/icons-vue";
+import {Plus, Edit, Delete, User, View, InfoFilled, Bottom, Select} from "@element-plus/icons-vue";
 
 const tableData = ref([])
 const params = ref({
   page: 1,
-  pageSize: 50
+  pageSize: 10 // 每次加载的数量改为较小的值，以便于测试懒加载
 })
-const count = ref('')
+const count = ref(0)
+const loading = ref(false)
+const hasMoreData = ref(true)
 // 不再需要多选功能
 // const multipleSelection = ref([])
 const courseDialogVisible = ref(false)
@@ -26,7 +28,8 @@ const teacherForm = ref([])
 const inputVisible =  ref(false)
 const inputValue = ref('')
 
-const getPage = () => {
+const getPage = (isInitial = false) => {
+  loading.value = true
   axios.get('/api/course/page', {
     params: {
       page: params.value.page,
@@ -34,19 +37,45 @@ const getPage = () => {
     }
   }).then(res => {
     if (res.data.code === 200) {
-      tableData.value = res.data.data.list
+      if (isInitial) {
+        tableData.value = res.data.data.list
+      } else {
+        tableData.value = [...tableData.value, ...res.data.data.list]
+      }
       count.value = res.data.data.count
+
+      // 判断是否还有更多数据
+      hasMoreData.value = tableData.value.length < count.value
+
+      // 如果还有更多数据，增加页码
+      if (hasMoreData.value) {
+        params.value.page++
+      }
     }
     if (res.data.code === 401) {
       storage.remove('isAuthenticated');
       router.push('/login')
     }
+    loading.value = false
+  }).catch(err => {
+    console.error('Failed to fetch courses:', err)
+    loading.value = false
   })
 }
-const handleSizeChange = (val) => {
-  params.value.pageSize = val
-  getPage()
+const handleScroll = () => {
+  // 检查是否滚动到底部附近
+  if (hasMoreData.value && !loading.value) {
+    const scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+    const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight
+    const clientHeight = document.documentElement.clientHeight || window.innerHeight
+
+    // 当滚动到距离底部200px时加载更多数据
+    if (scrollTop + clientHeight >= scrollHeight - 200) {
+      getPage()
+    }
+  }
 }
+
 const courseDelete = (row) => {
   axios.get('/api/course/deleteCourse', {
     params: {
@@ -54,7 +83,9 @@ const courseDelete = (row) => {
     }
   }).then(res => {
     if (res.data.code === 200) {
-      getPage();
+      // 重置页码并重新加载
+      params.value.page = 1
+      getPage(true);
       ElNotification({
         title: '删除成功',
         type: 'success'
@@ -66,12 +97,6 @@ const courseDelete = (row) => {
       })
     }
   })
-  console.log(row.id)
-}
-const handleCurrentChange = (val) => {
-  params.value.page = val
-  console.log(params.value.page, params.value.pageSize)
-  getPage()
 }
 // 不再需要表格多选功能
 // const handleSelectionChange = (val) => {
@@ -84,7 +109,9 @@ const creatCourse = () => {
   }))).then(res => {
     console.log(res.data.code)
     if (res.data.code === 200) {
-      getPage();
+      // 重置页码并重新加载
+      params.value.page = 1
+      getPage(true);
       ElNotification({
         title: '创建成功',
         type: 'success'
@@ -108,7 +135,9 @@ const primaryCourse = () => {
     name: dialogForm.value.name,
     description: dialogForm.value.description
   }))).then(res => {
-    getPage()
+    // 重置页码并重新加载
+    params.value.page = 1
+    getPage(true)
     console.log(res)
   })
 }
@@ -135,8 +164,17 @@ const removeTeacher = (teacher) => {
 
 }
 onMounted(() => {
-    getPage()
-  })
+  // 初始加载数据
+  getPage(true)
+
+  // 添加滚动监听
+  window.addEventListener('scroll', handleScroll)
+})
+
+onBeforeUnmount(() => {
+  // 移除滚动监听
+  window.removeEventListener('scroll', handleScroll)
+})
 </script>
 
 <template>
@@ -348,16 +386,30 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="pagination-container">
-      <el-pagination
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-          :current-page="params.page"
-          :page-sizes="[5, 10, 15, 20]"
-          :page-size="params.pageSize"
-          layout="total, sizes, prev, pager, next"
-          :total="count">
-      </el-pagination>
+    <div class="loading-state" v-if="loading">
+      <el-skeleton style="width: 100%" animated>
+        <template #template>
+          <div style="display: flex; justify-content: space-between; gap: 20px;">
+            <el-skeleton-item variant="card" style="width: 30%; height: 200px" />
+            <el-skeleton-item variant="card" style="width: 30%; height: 200px" />
+            <el-skeleton-item variant="card" style="width: 30%; height: 200px" />
+          </div>
+        </template>
+      </el-skeleton>
+    </div>
+
+    <div class="scroll-tip" v-if="hasMoreData && !loading">
+      <el-tag type="primary" effect="light" class="tip-tag">
+        <el-icon><Bottom /></el-icon>
+        <span>继续滚动加载更多课程</span>
+      </el-tag>
+    </div>
+
+    <div class="scroll-tip" v-if="!hasMoreData && tableData.length > 0">
+      <el-tag type="success" effect="light" class="tip-tag">
+        <el-icon><Select /></el-icon>
+        <span>已加载全部课程</span>
+      </el-tag>
     </div>
   </div>
 </template>
@@ -517,6 +569,37 @@ onMounted(() => {
         color: var(--primary-color);
         font-weight: bold;
       }
+    }
+  }
+
+  .loading-state {
+    margin: 20px 0;
+  }
+
+  .scroll-tip {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+
+    .tip-tag {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 16px;
+      font-size: 14px;
+      animation: pulse 1.5s infinite;
+    }
+  }
+
+  @keyframes pulse {
+    0% {
+      opacity: 0.7;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.7;
     }
   }
 }
