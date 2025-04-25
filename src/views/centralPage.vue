@@ -18,20 +18,14 @@ const userInfo = ref({
 
 // 统计数据
 const statistics = ref({
-  questionCount: 125,
-  courseCount: 8,
-  folderCount: 15,
-  lastActivity: '2023-06-01 15:45:22'
+  questionCount: 0,
+  courseCount: 0,
+  folderCount: 0,
+  lastLoginTime: ''
 });
 
 // 最近活动
-const recentActivities = ref([
-  { id: 1, type: '创建试题', name: '数据结构期末考试题', time: '2023-06-01 15:45:22' },
-  { id: 2, type: '编辑试题', name: '算法分析期中测验', time: '2023-05-28 09:30:15' },
-  { id: 3, type: '创建文件夹', name: '编译原理试题集', time: '2023-05-25 14:20:33' },
-  { id: 4, type: '添加课程', name: '计算机网络', time: '2023-05-20 11:15:42' },
-  { id: 5, type: '编辑试题', name: '操作系统期末考试', time: '2023-05-18 16:40:10' }
-]);
+const recentActivities = ref([]);
 
 // 修改密码对话框
 const passwordFormVisible = ref(false);
@@ -151,8 +145,36 @@ const getUserInfo = async () => {
   }
 };
 
+// 获取统计数据
+const getStatistics = async () => {
+  try {
+    const res = await axios.get('/api/user/statistics');
+    if (res.data.code === 200) {
+      statistics.value = res.data.data;
+    }
+  } catch (error) {
+    console.error('Failed to fetch statistics:', error);
+  }
+};
+
+// 获取最近活动
+const getRecentActivities = async () => {
+  try {
+    const res = await axios.get('/api/userActivity/recent');
+    if (res.data && Array.isArray(res.data)) {
+      recentActivities.value = res.data;
+    } else if (res.data && res.data.code === 200 && Array.isArray(res.data.data)) {
+      recentActivities.value = res.data.data;
+    }
+  } catch (error) {
+    console.error('Failed to fetch recent activities:', error);
+  }
+};
+
 onMounted(() => {
   getUserInfo();
+  getStatistics();
+  getRecentActivities();
 });
 </script>
 
