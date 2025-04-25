@@ -7,6 +7,7 @@ import login from "@/views/loginPage.vue";
 import edit from '@/views/editPage.vue'
 import {storage} from "@/storage/storage";
 import course from "@/views/coursePage.vue";
+import announcement from "@/views/announcementPage.vue";
 
 const routes = [
     {
@@ -39,6 +40,12 @@ const adminMenu = [
         component: course,
         name: '课程管理',
         meta: { label: '课程管理', icon: 'Reading', role: 'admin', path: '/course'}
+    },
+    {
+        path: '/announcement',
+        component: announcement,
+        name: '公告管理',
+        meta: { label: '公告管理', icon: 'Bell', role: 'admin', path: '/announcement'}
     }
 ]
 

@@ -14,6 +14,13 @@ const statistics = ref({
   lastLoginTime: ''
 });
 
+// 公告数据
+const announcement = ref({
+  title: '加载中...',
+  content: '正在加载公告内容...',
+  createTime: ''
+});
+
 const quickLinks = [
   { name: '试题管理', icon: 'Document', path: '/questions', color: '#409EFF' },
   { name: '个人中心', icon: 'User', path: '/central', color: '#67C23A' },
@@ -52,7 +59,7 @@ const getWelcomeTime = () => {
 const getStatistics = async () => {
   try {
     const res = await axios.get('/api/user/statistics');
-    if (res.data.code === 200) {
+    if (res.data && res.data.code === 200 && res.data.data) {
       statistics.value = res.data.data;
     }
   } catch (error) {
@@ -60,9 +67,44 @@ const getStatistics = async () => {
   }
 };
 
+// 获取最新公告
+const getLatestAnnouncement = async () => {
+  try {
+    console.log('获取最新公告');
+    const res = await axios.get('/api/announcement/latest');
+    console.log('公告响应:', res);
+
+    // 统一从 res.data.data 中获取响应数据
+    if (res.data && res.data.code === 200 && res.data.data && res.data.data.length > 0) {
+      announcement.value = res.data.data[0];
+    }
+  } catch (error) {
+    console.error('Failed to fetch announcement:', error);
+  }
+};
+
+// 格式化日期
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString();
+};
+
+// 监听公告更新
+const listenForAnnouncementUpdates = () => {
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'announcement_updated') {
+      console.log('检测到公告更新，刷新数据');
+      getLatestAnnouncement();
+    }
+  });
+};
+
 onMounted(() => {
   getStatistics();
   getWelcomeTime();
+  getLatestAnnouncement();
+  listenForAnnouncementUpdates();
 });
 </script>
 
@@ -142,13 +184,18 @@ onMounted(() => {
       <el-card class="announcement-card">
         <template #header>
           <div class="announcement-header">
-            <span>最新公告</span>
-            <el-tag size="small" type="success">新</el-tag>
+            <span>{{ announcement.title }}</span>
+            <div>
+              <el-button type="text" size="small" @click="getLatestAnnouncement">
+                <el-icon><Refresh /></el-icon>
+              </el-button>
+              <el-tag size="small" type="success">新</el-tag>
+            </div>
           </div>
         </template>
         <div class="announcement-content">
-          <p>愚蠢的伟</p>
-          <p class="announcement-date">2023-06-01</p>
+          <p v-html="announcement.content"></p>
+          <p class="announcement-date">{{ formatDate(announcement.createTime) }}</p>
         </div>
       </el-card>
     </div>
@@ -302,6 +349,12 @@ onMounted(() => {
       justify-content: space-between;
       font-size: 16px;
       font-weight: 600;
+
+      div {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
     }
 
     .announcement-content {
