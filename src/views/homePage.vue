@@ -15,11 +15,7 @@ const statistics = ref({
 });
 
 // 公告数据
-const announcement = ref({
-  title: '加载中...',
-  content: '正在加载公告内容...',
-  createTime: ''
-});
+const announcements = ref([]);
 
 const quickLinks = [
   { name: '试题管理', icon: 'Document', path: '/questions', color: '#409EFF' },
@@ -68,7 +64,7 @@ const getStatistics = async () => {
 };
 
 // 获取最新公告
-const getLatestAnnouncement = async () => {
+const getLatestAnnouncements = async () => {
   try {
     console.log('获取最新公告');
     const res = await axios.get('/api/announcement/latest');
@@ -76,10 +72,47 @@ const getLatestAnnouncement = async () => {
 
     // 统一从 res.data.data 中获取响应数据
     if (res.data && res.data.code === 200 && res.data.data && res.data.data.length > 0) {
-      announcement.value = res.data.data[0];
+      announcements.value = res.data.data;
+    } else {
+      // 如果没有公告，设置三个默认公告
+      announcements.value = [
+        {
+          title: '暂无公告',
+          content: '暂无公告内容',
+          createTime: new Date()
+        },
+        {
+          title: '暂无公告',
+          content: '暂无公告内容',
+          createTime: new Date()
+        },
+        {
+          title: '暂无公告',
+          content: '暂无公告内容',
+          createTime: new Date()
+        }
+      ];
     }
   } catch (error) {
-    console.error('Failed to fetch announcement:', error);
+    console.error('Failed to fetch announcements:', error);
+    // 出错时设置三个默认公告
+    announcements.value = [
+      {
+        title: '获取公告失败',
+        content: '请稍后再试',
+        createTime: new Date()
+      },
+      {
+        title: '获取公告失败',
+        content: '请稍后再试',
+        createTime: new Date()
+      },
+      {
+        title: '获取公告失败',
+        content: '请稍后再试',
+        createTime: new Date()
+      }
+    ];
   }
 };
 
@@ -95,7 +128,7 @@ const listenForAnnouncementUpdates = () => {
   window.addEventListener('storage', (event) => {
     if (event.key === 'announcement_updated') {
       console.log('检测到公告更新，刷新数据');
-      getLatestAnnouncement();
+      getLatestAnnouncements();
     }
   });
 };
@@ -103,7 +136,7 @@ const listenForAnnouncementUpdates = () => {
 onMounted(() => {
   getStatistics();
   getWelcomeTime();
-  getLatestAnnouncement();
+  getLatestAnnouncements();
   listenForAnnouncementUpdates();
 });
 </script>
@@ -118,6 +151,31 @@ onMounted(() => {
       </div>
       <div class="welcome-image">
         <img src="../../static/image/guangyou1.jpg" alt="欢迎图片" />
+      </div>
+    </div>
+
+    <!-- 系统公告 -->
+    <div class="announcement-section">
+      <h2 class="section-title">系统公告</h2>
+      <div class="announcement-container">
+        <el-card class="announcement-card-container">
+          <div v-for="(announcement, index) in announcements.slice(0, 3)" :key="index" class="announcement-item">
+            <div class="announcement-header">
+              <div class="announcement-title">
+                <span>{{ announcement?.title || '暂无公告' }}</span>
+                <el-tag v-if="announcement?.isTop" size="small" type="danger">置顶</el-tag>
+              </div>
+              <span class="announcement-date">{{ formatDate(announcement?.createTime) }}</span>
+            </div>
+            <div class="announcement-content">
+              <p v-html="announcement?.content"></p>
+            </div>
+            <div v-if="index < announcements.slice(0, 3).length - 1" class="announcement-divider"></div>
+          </div>
+          <div v-if="announcements.length === 0" class="announcement-empty">
+            <p>暂无公告</p>
+          </div>
+        </el-card>
       </div>
     </div>
 
@@ -178,27 +236,7 @@ onMounted(() => {
       </el-row>
     </div>
 
-    <!-- 系统公告 -->
-    <div class="announcement-section">
-      <h2 class="section-title">系统公告</h2>
-      <el-card class="announcement-card">
-        <template #header>
-          <div class="announcement-header">
-            <span>{{ announcement.title }}</span>
-            <div>
-              <el-button type="text" size="small" @click="getLatestAnnouncement">
-                <el-icon><Refresh /></el-icon>
-              </el-button>
-              <el-tag size="small" type="success">新</el-tag>
-            </div>
-          </div>
-        </template>
-        <div class="announcement-content">
-          <p v-html="announcement.content"></p>
-          <p class="announcement-date">{{ formatDate(announcement.createTime) }}</p>
-        </div>
-      </el-card>
-    </div>
+
   </div>
 </template>
 
@@ -339,36 +377,87 @@ onMounted(() => {
 }
 
 .announcement-section {
-  .announcement-card {
+  margin-bottom: 30px;
+
+  .announcement-container {
+    // 控制公告栏的宽度，与其他组件一样自适应页面宽度
+    width: 100%;
+  }
+
+  .announcement-card-container {
     border-radius: 8px;
     box-shadow: var(--box-shadow);
+    padding: 0;
+    // 增加高度以容纳三条公告
+    min-height: 300px;
 
-    .announcement-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 16px;
-      font-weight: 600;
+    .announcement-item {
+      padding: 15px 20px;
+      position: relative;
+      // 确保每个公告项占据足够的高度，但不要太高，以便能显示三条公告
+      height: 100px;
+      box-sizing: border-box;
+      overflow: hidden;
 
-      div {
+      .announcement-header {
         display: flex;
         align-items: center;
-        gap: 5px;
+        justify-content: space-between;
+        margin-bottom: 5px;
+
+        .announcement-title {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 15px;
+          font-weight: 600;
+          // 限制标题长度，超出显示省略号
+          max-width: 70%;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .announcement-date {
+          color: var(--text-secondary);
+          font-size: 12px;
+        }
+      }
+
+      .announcement-content {
+        margin-top: 5px;
+        height: 60px;
+        overflow: hidden;
+
+        p {
+          margin: 0;
+          line-height: 1.5;
+          // 限制内容显示行数
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          line-clamp: 2;
+          -webkit-box-orient: vertical;
+          max-height: 3em; // 2行文字的高度
+          font-size: 14px;
+        }
+      }
+
+      .announcement-divider {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background-color: #ebeef5;
       }
     }
 
-    .announcement-content {
-      p {
-        margin: 0 0 10px;
-        line-height: 1.6;
-      }
-
-      .announcement-date {
-        text-align: right;
-        color: var(--text-secondary);
-        font-size: 12px;
-        margin-top: 10px;
-      }
+    .announcement-empty {
+      padding: 30px;
+      text-align: center;
+      color: var(--text-secondary);
     }
   }
 }
