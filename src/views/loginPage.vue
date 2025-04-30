@@ -246,10 +246,13 @@ const login = () => {
             type: 'success',
             duration: 3000
           });
+          // 存储用户信息
           storage.set('isAuthenticated', true);
           storage.set('role', res.data.data.role);
           storage.set('username', loginForm.value.username);
-          storage.set('freshRoute', true);
+          storage.set('userId', res.data.data.id);
+
+          // 导航到首页 - 路由守卫会自动处理权限路由
           router.push('/home');
         }
       })

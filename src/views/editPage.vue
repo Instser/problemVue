@@ -13,6 +13,8 @@ import {useRoute} from "vue-router";
 import axios from "axios";
 import {ElNotification} from "element-plus";
 import router from "@/router/router";
+// 不再直接引入storage，由activityService内部使用
+import activityService from "@/services/activityService";
 
 const init = {
   selector: 'textarea',
@@ -44,6 +46,38 @@ const questionForm = ref({
   score: '',
   answer: ''
 });
+
+// 添加课程数组
+const courseArr = ref([]);
+
+// 获取所有课程
+const getCourses = () => {
+  axios.get('/api/course/page', {
+    params: {
+      page: 1,
+      pageSize: 100 // 获取足够多的课程
+    }
+  }).then(res => {
+    if (res.data.code === 200) {
+      courseArr.value = res.data.data.list;
+    }
+  }).catch(error => {
+    console.error('获取课程失败:', error);
+  });
+};
+// 题型映射
+const typeMap = {
+  '选择题': 1,
+  '填空题': 2,
+  '简答题': 3,
+  '证明题': 4
+};
+
+// 处理题型变化
+const handleTypeChange = (value) => {
+  questionForm.value.typeId = typeMap[value] || '';
+};
+
 // 正则表达式
 const numReg = /^[0-9]*$/
 const numRe = new RegExp(numReg)
@@ -60,6 +94,12 @@ const addQuestion = () => {
           title: '修改成功',
           type: 'success'
         });
+
+        // 使用活动服务记录编辑试题活动
+        const detailedName = activityService.formatQuestionInfo(questionForm.value, courseArr.value);
+        activityService.recordActivity('编辑试题', detailedName, questionForm.value.id)
+          .catch(error => console.error('记录编辑试题活动失败:', error));
+
         router.push('/questions');
       } else {
         ElNotification({
@@ -80,6 +120,13 @@ const addQuestion = () => {
           title: '试题添加成功',
           type: 'success'
         });
+
+        // 使用活动服务记录创建试题活动
+        const detailedName = activityService.formatQuestionInfo(questionForm.value, courseArr.value);
+        activityService.recordActivity('创建试题', detailedName, res.data.data)
+          .catch(error => console.error('记录创建试题活动失败:', error));
+
+        router.push('/questions');
       } else {
         ElNotification({
           title: '试题添加失败',
@@ -106,6 +153,7 @@ const getQuestion = () => {
 }
 
 tinymce.init({})
+getCourses() // 获取课程数据
 getQuestion()
 </script>
 
@@ -113,11 +161,18 @@ getQuestion()
   <div>
     <div class="flex gap-4 mb-4">
       <span>课程</span>
-      <el-input
+      <el-select
           v-model="questionForm.quesCourId"
           style="width: 240px"
-          placeholder="课程"
-      />
+          placeholder="选择课程"
+      >
+        <el-option
+          v-for="course in courseArr"
+          :key="course.id"
+          :label="course.name"
+          :value="course.id"
+        />
+      </el-select>
       <span>章节</span>
       <el-input
           v-model="questionForm.chapter"
@@ -125,16 +180,29 @@ getQuestion()
           placeholder="章节"
       />
       <span>难度</span>
-      <el-input
+      <el-select
           v-model="questionForm.hard"
           style="width: 240px"
-          placeholder="难度"
-      />
+          placeholder="选择难度"
+      >
+        <el-option label="简单" value="简单" />
+        <el-option label="中等" value="中等" />
+        <el-option label="困难" value="困难" />
+      </el-select>
     </div>
     <div class="flex gap-4">
       <span>题型</span>
-      <el-input v-model="questionForm.typeName" style="width: 240px" placeholder="题型">
-      </el-input>
+      <el-select
+          v-model="questionForm.typeName"
+          style="width: 240px"
+          placeholder="选择题型"
+          @change="handleTypeChange"
+      >
+        <el-option label="选择题" value="选择题" />
+        <el-option label="填空题" value="填空题" />
+        <el-option label="简答题" value="简答题" />
+        <el-option label="证明题" value="证明题" />
+      </el-select>
       <span>分值</span>
       <el-input
           v-model="questionForm.score"
@@ -147,12 +215,8 @@ getQuestion()
           style="width: 240px"
           placeholder="答案">
       </el-input>
-      <span>类型id</span>
-      <el-input
-          v-model="questionForm.typeId"
-          style="width: 240px"
-          placeholder="实际题型">
-      </el-input>
+      <!-- 类型ID已自动设置，无需显示 -->
+      <input type="hidden" v-model="questionForm.typeId">
     </div>
   </div>
   <div class="app-container">

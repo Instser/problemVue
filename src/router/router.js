@@ -9,109 +9,157 @@ import {storage} from "@/storage/storage";
 import course from "@/views/coursePage.vue";
 import announcement from "@/views/announcementPage.vue";
 
-const routes = [
+// 公共路由 - 所有用户都可以访问
+const constantRoutes = [
+    {
+        path: '/login',
+        name: '登录',
+        component: login,
+        meta: { requiresAuth: false }
+    },
     {
         path: '/',
         component: Main,
         redirect: '/home',
         name: 'main',
         children: [
-            // 子路由
-            {path: 'home', name: '首页', component: home, meta: {label:'首页', icon: 'view', path: '/home'}}, // 首页
-            {path: 'questions', name: '试题管理', component: questions, meta: {label:'试题管理', icon: 'document-copy', path: '/questions'}}, // 试题管理
-            {path: 'central', name: '个人中心', component: central, meta: {label:'个人中心', icon: 'user', path: '/central'}} // 个人中心
+            // 基础路由 - 所有已登录用户可访问
+            {
+                path: 'home',
+                name: '首页',
+                component: home,
+                meta: {
+                    requiresAuth: true,
+                    label: '首页',
+                    icon: 'view',
+                    path: '/home'
+                }
+            },
+            {
+                path: 'questions',
+                name: '试题管理',
+                component: questions,
+                meta: {
+                    requiresAuth: true,
+                    label: '试题管理',
+                    icon: 'document-copy',
+                    path: '/questions'
+                }
+            },
+            {
+                path: 'central',
+                name: '个人中心',
+                component: central,
+                meta: {
+                    requiresAuth: true,
+                    label: '个人中心',
+                    icon: 'user',
+                    path: '/central'
+                }
+            },
+            {
+                path: 'edit',
+                name: '编辑',
+                component: edit,
+                meta: {
+                    requiresAuth: true,
+                    hidden: true
+                }
+            }
         ]
     },
+    // 404路由
     {
-        path: '/login',
-        name: '登录',
-        component: login
-    },
-    {
-        path: '/edit',
-        name: '编辑',
-        component: edit
+        path: '/:pathMatch(.*)*',
+        redirect: '/home'
     }
 ]
 
-const adminMenu = [
+// 管理员专用路由
+const adminRoutes = [
     {
         path: '/course',
         component: course,
         name: '课程管理',
-        meta: { label: '课程管理', icon: 'Reading', role: 'admin', path: '/course'}
+        meta: {
+            requiresAuth: true,
+            requiresAdmin: true,
+            label: '课程管理',
+            icon: 'Reading',
+            role: 'admin',
+            path: '/course'
+        }
     },
     {
         path: '/announcement',
         component: announcement,
         name: '公告管理',
-        meta: { label: '公告管理', icon: 'Bell', role: 'admin', path: '/announcement'}
+        meta: {
+            requiresAuth: true,
+            requiresAdmin: true,
+            label: '公告管理',
+            icon: 'Bell',
+            role: 'admin',
+            path: '/announcement'
+        }
     }
 ]
 
+// 创建路由实例
 const router = createRouter({
     history: createWebHashHistory(),
-    routes,
+    routes: constantRoutes,
     scrollBehavior() {
         return { top: 0 }
     }
 })
 
-let registerRouteFresh = true //判断页面是否刷新以及第一次进入
-router.beforeEach((to, from, next) => {
-    let isAuthenticated = storage.get("isAuthenticated");/* 判断用户是否已登录 */
+// 路由守卫
+router.beforeEach(async (to, from, next) => {
+    // 获取认证状态
+    const isAuthenticated = storage.get("isAuthenticated") || false;
+    const userRole = storage.get("role");
+
+    // 检查路由是否需要认证
+    const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+    const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
 
     // 处理动态路由
-    if (registerRouteFresh || storage.get('freshRoute')) {
-        if (storage.get('role') === 'admin') {
-            console.log('更新route');
-            // 检查路由是否已存在，避免重复添加
-            const existingRoutes = router.getRoutes().map(route => route.name);
+    const hasAdminRoutes = router.hasRoute('课程管理');
 
-            adminMenu.forEach((value) => {
-                if (!existingRoutes.includes(value.name)) {
-                    router.addRoute('main', value);
-                    console.log('添加路由:', value.name);
-                }
-            });
-
-            registerRouteFresh = false;
-            storage.set('freshRoute', false);
-
-            // 确保路由表更新后再导航
-            return next({ path: to.fullPath, replace: true });
-        } else {
-            try {
-                if (router.hasRoute('管理')) {
-                    router.removeRoute('管理');
-                }
-                if (router.hasRoute('课程管理')) {
-                    router.removeRoute('课程管理');
-                }
-            } catch (e) {
-                console.error('移除路由失败:', e);
+    // 如果用户是管理员但管理员路由尚未添加
+    if (isAuthenticated && userRole === 'admin' && !hasAdminRoutes) {
+        // 添加管理员路由
+        adminRoutes.forEach(route => {
+            if (!router.hasRoute(route.name)) {
+                router.addRoute('main', route);
+                console.log('添加管理员路由:', route.name);
             }
-            storage.set('freshRoute', false);
+        });
+
+        // 如果当前路由是管理员路由，需要重新导航以确保路由正确加载
+        if (to.matched.length === 0) {
+            next({ path: to.fullPath, replace: true });
+            return;
         }
     }
 
-    // 处理认证逻辑
-    if (isAuthenticated === null) {
-        isAuthenticated = false;
+    // 如果用户不是管理员但尝试访问管理员路由
+    if (requiresAdmin && userRole !== 'admin') {
+        next({ name: '首页' });
+        return;
     }
 
-    if (to.name !== '登录' && !isAuthenticated) {
+    // 认证逻辑
+    if (requiresAuth && !isAuthenticated) {
+        // 未登录用户尝试访问需要认证的页面，重定向到登录页
         next({ name: '登录' });
     } else if (to.name === '登录' && isAuthenticated) {
+        // 已登录用户尝试访问登录页，重定向到首页
         next({ name: '首页' });
     } else {
-        // 确保路由存在
-        if (to.matched.length === 0) {
-            // 如果路由不匹配，重定向到首页
-            next({ name: '首页' });
-        } else {
-            next();
-        }
+        // 其他情况正常导航
+        next();
     }
 })
 

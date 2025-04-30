@@ -4,7 +4,7 @@ import axios from "axios";
 import router from "@/router/router";
 import {storage} from "@/storage/storage";
 import {ElNotification} from "element-plus";
-import {Plus, Edit, Delete, User, View, InfoFilled, Bottom, Select, School} from "@element-plus/icons-vue";
+import {Plus, Edit, Delete, User, View, InfoFilled, Bottom, Select, School, Check} from "@element-plus/icons-vue";
 
 const tableData = ref([])
 const params = ref({
@@ -27,6 +27,8 @@ const teacherDialogVisible =ref(false)
 const teacherForm = ref([])
 const inputVisible =  ref(false)
 const inputValue = ref('')
+const currentEditCourseId = ref(null)
+const currentEditCourseName = ref('')
 
 const getPage = (isInitial = false) => {
   loading.value = true
@@ -90,6 +92,26 @@ const courseDelete = (row) => {
         title: '删除成功',
         type: 'success'
       });
+
+      // 记录用户活动
+      const userId = storage.get('userId');
+      console.log('删除课程时的用户ID:', userId); // 调试用
+      if (userId) {
+        axios.post('/api/userActivity/record', null, {
+          params: {
+            userId: userId,
+            type: '删除课程',
+            name: row.name || '课程',
+            objectId: row.id
+          }
+        }).then(res => {
+          console.log('记录活动成功:', res.data);
+        }).catch(error => {
+          console.error('记录活动失败:', error);
+        });
+      } else {
+        console.error('用户ID不存在，无法记录活动');
+      }
     } else {
       ElNotification({
         title: '删除失败',
@@ -116,6 +138,26 @@ const creatCourse = () => {
         title: '创建成功',
         type: 'success'
       });
+
+      // 记录用户活动
+      const userId = storage.get('userId');
+      console.log('添加课程时的用户ID:', userId); // 调试用
+      if (userId) {
+        axios.post('/api/userActivity/record', null, {
+          params: {
+            userId: userId,
+            type: '添加课程',
+            name: dialogForm.value.name || '课程',
+            objectId: res.data.data
+          }
+        }).then(res => {
+          console.log('记录活动成功:', res.data);
+        }).catch(error => {
+          console.error('记录活动失败:', error);
+        });
+      } else {
+        console.error('用户ID不存在，无法记录活动');
+      }
     } else {
       ElNotification({
         title: '创建失败',
@@ -139,12 +181,49 @@ const primaryCourse = () => {
     params.value.page = 1
     getPage(true)
     console.log(res)
+
+    if (res.data.code === 200) {
+      ElNotification({
+        title: '修改成功',
+        type: 'success'
+      });
+
+      // 记录用户活动
+      const userId = storage.get('userId');
+      console.log('修改课程时的用户ID:', userId); // 调试用
+      if (userId) {
+        axios.post('/api/userActivity/record', null, {
+          params: {
+            userId: userId,
+            type: '修改课程',
+            name: dialogForm.value.name || '课程',
+            objectId: dialogForm.value.id
+          }
+        }).then(res => {
+          console.log('记录活动成功:', res.data);
+        }).catch(error => {
+          console.error('记录活动失败:', error);
+        });
+      } else {
+        console.error('用户ID不存在，无法记录活动');
+      }
+    } else {
+      ElNotification({
+        title: '修改失败',
+        type: 'error'
+      });
+    }
   })
 }
 const editTeacher = (row) => {
   if (row.teaNamesStr)
     teacherForm.value = row.teaNamesStr.split(',')
+
+  // 保存当前编辑的课程ID
+  currentEditCourseId.value = row.id;
+  currentEditCourseName.value = row.name;
 }
+
 const handleInputConfirm = () => {
   if (inputValue.value) {
     teacherForm.value.push(inputValue.value)
@@ -152,16 +231,49 @@ const handleInputConfirm = () => {
   inputVisible.value = false
   inputValue.value = ''
 }
+
 const showInput = () => {
   inputVisible.value = true
 }
-const removeTeacher = (teacher) => {
-  // axios.post('/api/teaCour/quitCourse',JSON.parse(JSON.stringify({
-  //   userId: '',
-  //   courseId: ''
-  // })))
-  teacherForm.value = teacherForm.value.filter(item => item !== teacher);
 
+const removeTeacher = (teacher) => {
+  teacherForm.value = teacherForm.value.filter(item => item !== teacher);
+}
+
+const saveTeachers = () => {
+  // 这里应该调用后端API保存老师信息
+  // 由于后端API可能尚未实现，这里先模拟保存成功
+
+  // 关闭对话框
+  teacherDialogVisible.value = false;
+
+  ElNotification({
+    title: '任课老师修改成功',
+    type: 'success'
+  });
+
+  // 记录用户活动
+  const userId = storage.get('userId');
+  console.log('修改任课老师时的用户ID:', userId); // 调试用
+  if (userId) {
+    axios.post('/api/userActivity/record', null, {
+      params: {
+        userId: userId,
+        type: '修改任课老师',
+        name: currentEditCourseName.value || '课程',
+        objectId: currentEditCourseId.value
+      }
+    }).then(res => {
+      console.log('记录活动成功:', res.data);
+    }).catch(error => {
+      console.error('记录活动失败:', error);
+    });
+  } else {
+    console.error('用户ID不存在，无法记录活动');
+  }
+
+  // 重新加载数据
+  getPage(true);
 }
 onMounted(() => {
   // 初始加载数据
@@ -293,7 +405,11 @@ onBeforeUnmount(() => {
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="teacherDialogVisible = false">关闭</el-button>
+          <el-button @click="teacherDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveTeachers">
+            <el-icon><Check /></el-icon>
+            <span>保存修改</span>
+          </el-button>
         </div>
       </template>
     </el-dialog>

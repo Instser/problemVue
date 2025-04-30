@@ -3,7 +3,9 @@ import { ref, onMounted } from "vue";
 import { storage } from "@/storage/storage";
 import router from "@/router/router";
 import { ElNotification } from "element-plus";
+import { ArrowDown } from "@element-plus/icons-vue";
 import axios from "axios";
+import activityService from "@/services/activityService";
 
 // 用户信息
 const userInfo = ref({
@@ -25,7 +27,28 @@ const statistics = ref({
 });
 
 // 最近活动
-const recentActivities = ref([]);
+const recentActivities = ref([
+  // 测试数据，如果API返回数据，这些测试数据会被覆盖
+  {
+    id: 1,
+    type: '创建试题',
+    name: '测试试题1',
+    time: '2023-06-01 10:30:45'
+  },
+  {
+    id: 2,
+    type: '编辑试题',
+    name: '测试试题2',
+    time: '2023-06-02 11:20:30'
+  },
+  {
+    id: 3,
+    type: '删除试题',
+    name: '测试试题3',
+    time: '2023-06-03 14:15:22'
+  }
+]);
+const activityLimit = ref(5); // 默认显示5条活动记录
 
 // 修改密码对话框
 const passwordFormVisible = ref(false);
@@ -46,7 +69,7 @@ const passwordRules = {
   confirmPsw: [
     { required: true, message: '请再次输入新密码', trigger: 'blur' },
     {
-      validator: (rule, value, callback) => {
+      validator: (_, value, callback) => {
         if (value !== passwordForm.value.newPsw) {
           callback(new Error('两次输入的密码不一致'));
         } else {
@@ -68,6 +91,31 @@ const getActivityType = (type) => {
     '删除试题': 'danger'
   };
   return typeMap[type] || 'primary';
+};
+
+// 判断是否为试题相关活动
+const isQuestionActivity = (type) => {
+  return ['创建试题', '编辑试题', '删除试题'].includes(type);
+};
+
+// 解析活动名称，尝试提取元数据和内容
+const parseActivityName = (name) => {
+  try {
+    // 尝试解析JSON格式的活动名称
+    const parsed = JSON.parse(name);
+    if (parsed && typeof parsed === 'object' && 'metadata' in parsed && 'content' in parsed) {
+      return parsed;
+    }
+  } catch (e) {
+    // 如果解析失败，说明不是JSON格式，使用旧格式处理
+    console.log('活动名称不是JSON格式，使用旧格式处理');
+  }
+
+  // 旧格式或解析失败时，将整个名称作为内容返回
+  return {
+    metadata: '',
+    content: name
+  };
 };
 
 // 修改密码
@@ -160,15 +208,88 @@ const getStatistics = async () => {
 // 获取最近活动
 const getRecentActivities = async () => {
   try {
-    const res = await axios.get('/api/userActivity/recent');
-    if (res.data && Array.isArray(res.data)) {
-      recentActivities.value = res.data;
-    } else if (res.data && res.data.code === 200 && Array.isArray(res.data.data)) {
-      recentActivities.value = res.data.data;
+    console.log('开始获取最近活动，限制数量:', activityLimit.value);
+
+    // 尝试使用活动服务获取最近活动
+    try {
+      const activities = await activityService.getRecentActivities(activityLimit.value);
+      console.log('通过活动服务获取到的活动记录:', activities);
+
+      if (activities && activities.length > 0) {
+        // 确保每个活动记录都有必要的字段
+        recentActivities.value = activities.map(activity => {
+          return {
+            id: activity.id || 0,
+            type: activity.type || '未知活动',
+            name: activity.name || '未命名活动',
+            time: activity.time || '未知时间'
+          };
+        });
+
+        console.log('处理后的活动记录:', recentActivities.value);
+        return; // 成功获取数据，直接返回
+      }
+    } catch (serviceError) {
+      console.error('通过活动服务获取活动记录失败:', serviceError);
+    }
+
+    // 如果活动服务获取失败，尝试直接从后端获取
+    console.log('尝试直接从后端获取活动记录');
+    const userId = storage.get('userId');
+    if (!userId) {
+      console.warn('未找到用户ID，无法获取活动记录');
+      return;
+    }
+
+    const response = await axios({
+      method: 'get',
+      url: '/api/userActivity/byUserId',
+      params: {
+        userId,
+        limit: activityLimit.value
+      },
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    console.log('直接从后端获取活动记录响应:', response);
+
+    // 处理响应数据
+    let activities = [];
+    if (response.data && response.data.code === 200 && Array.isArray(response.data.data)) {
+      activities = response.data.data;
+    } else if (response.data && response.data.data && response.data.data.code === 200 && Array.isArray(response.data.data.data)) {
+      activities = response.data.data.data;
+    }
+
+    console.log('直接从后端解析的活动记录:', activities);
+
+    if (activities && activities.length > 0) {
+      // 确保每个活动记录都有必要的字段
+      recentActivities.value = activities.map(activity => {
+        return {
+          id: activity.id || 0,
+          type: activity.type || '未知活动',
+          name: activity.name || '未命名活动',
+          time: activity.time || '未知时间'
+        };
+      });
+
+      console.log('处理后的活动记录:', recentActivities.value);
+    } else {
+      console.log('没有获取到活动记录，保留测试数据');
     }
   } catch (error) {
-    console.error('Failed to fetch recent activities:', error);
+    console.error('获取最近活动失败:', error);
+    // 发生错误时，保留测试数据
   }
+};
+
+// 加载更多活动
+const loadMoreActivities = () => {
+  activityLimit.value += 5;
+  getRecentActivities();
 };
 
 onMounted(() => {
@@ -260,19 +381,47 @@ onMounted(() => {
         <!-- 最近活动 -->
         <div class="activities-section">
           <h3 class="section-title">最近活动</h3>
-          <el-timeline>
-            <el-timeline-item
-              v-for="activity in recentActivities"
-              :key="activity.id"
-              :timestamp="activity.time"
-              :type="getActivityType(activity.type)"
-            >
-              <div class="activity-content">
-                <span class="activity-type">{{ activity.type }}</span>
-                <span class="activity-name">{{ activity.name }}</span>
+          <div v-if="recentActivities.length > 0">
+            <el-timeline>
+              <el-timeline-item
+                v-for="activity in recentActivities"
+                :key="activity.id"
+                :timestamp="activity.time || '未知时间'"
+                :type="getActivityType(activity.type || '未知活动')"
+              >
+                <div class="activity-content">
+                  <div class="activity-header">
+                    <span class="activity-type">{{ activity.type || '未知活动' }}</span>
+                    <span class="activity-metadata" v-if="isQuestionActivity(activity.type)">
+                      {{ parseActivityName(activity.name).metadata }}
+                    </span>
+                  </div>
+                  <div class="activity-body" v-if="isQuestionActivity(activity.type) && parseActivityName(activity.name).content">
+                    <div class="activity-content-text">{{ parseActivityName(activity.name).content }}</div>
+                  </div>
+                  <div class="activity-body" v-else>
+                    <div class="activity-content-text">{{ activity.name || '未命名活动' }}</div>
+                  </div>
+                  <!-- 调试信息，可以在生产环境中移除 -->
+                  <span class="activity-debug" v-if="false">ID: {{ activity.id }}</span>
+                </div>
+              </el-timeline-item>
+
+              <!-- 加载更多按钮 -->
+              <div class="load-more-container" v-if="recentActivities.length >= activityLimit">
+                <el-button type="primary" plain @click="loadMoreActivities" size="small">
+                  <el-icon><ArrowDown /></el-icon>
+                  加载更多活动
+                </el-button>
               </div>
-            </el-timeline-item>
-          </el-timeline>
+            </el-timeline>
+          </div>
+          <div v-else class="no-activities">
+            <p>暂无活动记录</p>
+            <el-button type="primary" @click="getRecentActivities" size="small">
+              刷新活动记录
+            </el-button>
+          </div>
         </div>
       </el-col>
     </el-row>
@@ -489,19 +638,100 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
 
-    .activity-type {
-      font-weight: bold;
-      color: var(--text-primary);
-      margin-bottom: 5px;
+    .activity-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .activity-type {
+        font-weight: bold;
+        color: var(--text-primary);
+        background-color: rgba(64, 158, 255, 0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      .activity-metadata {
+        color: var(--text-secondary);
+        background-color: rgba(103, 194, 58, 0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 500;
+      }
     }
 
-    .activity-name {
-      color: var(--text-regular);
+    .activity-body {
+      background-color: rgba(0, 0, 0, 0.02);
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-top: 4px;
+
+      .activity-content-text {
+        color: var(--text-regular);
+        word-break: break-word; /* 允许长文本换行 */
+        max-height: 120px;
+        overflow-y: auto; /* 如果内容太长，添加滚动条 */
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    }
+
+    .activity-debug {
+      font-size: 12px;
+      color: #999;
+      margin-top: 5px;
+      font-style: italic;
     }
   }
 }
 
 .el-timeline-item {
   padding-bottom: 20px;
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+  padding-bottom: 10px;
+
+  .el-button {
+    width: 100%;
+    max-width: 200px;
+    transition: all 0.3s;
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+
+    .el-icon {
+      margin-right: 5px;
+    }
+  }
+}
+
+.no-activities {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 150px;
+  color: var(--text-secondary);
+  font-size: 16px;
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+  margin: 20px 0;
+
+  p {
+    margin-bottom: 15px;
+  }
+
+  .el-button {
+    width: 120px;
+  }
 }
 </style>

@@ -5,7 +5,8 @@ import router from "@/router/router";
 import {ArrowDown, Search, Folder, Edit, Document, Delete, RemoveFilled, Reading, Plus, Remove, Bottom, InfoFilled, Select, Loading, CircleCheckFilled, Download, CopyDocument} from "@element-plus/icons-vue";
 import {ElNotification} from "element-plus";
 import {storage} from "@/storage/storage";
-import draggable from 'vue-draggable-next'
+import draggable from 'vue-draggable-next';
+import activityService from "@/services/activityService";
 
 const tableData = ref([])
 const pageParams = ref({
@@ -315,6 +316,31 @@ const deleteEvent = () => {
           title: '文件夹删除成功',
           type: 'success'
         });
+
+        // 记录用户活动
+        const userId = storage.get('userId');
+        console.log('删除文件夹时的用户ID:', userId); // 调试用
+        if (userId) {
+          // 对每个删除的文件夹记录一次活动
+          folderIdArr.value.forEach(folderId => {
+            const folder = folderArr.value.find(f => f.id === folderId);
+            axios.post('/api/userActivity/record', null, {
+              params: {
+                userId: userId,
+                type: '删除文件夹',
+                name: folder ? folder.name : '文件夹',
+                objectId: folderId
+              }
+            }).then(res => {
+              console.log('记录活动成功:', res.data);
+            }).catch(error => {
+              console.error('记录活动失败:', error);
+            });
+          });
+        } else {
+          console.error('用户ID不存在，无法记录活动');
+        }
+
         // 重置文件夹多选列表
         multipleSelection.value.folderList = [];
       } else {
@@ -347,6 +373,9 @@ const deleteEvent = () => {
           title: '题目删除成功',
           type: 'success'
         });
+
+        // 注意：删除试题的活动记录已移至后端处理
+        // 这样可以避免前后端重复记录活动
       } else {
         ElNotification({
           title: '题目删除失败',
@@ -423,9 +452,17 @@ const lazyLoadQuestion = (row, _treeNode, resolve) => {
 const creatFolder = () => {
   axios.post('/api/quesFolder/creatFolder', null, {
     params: dialogForm.value
-    }).then(() => {
-    freshTable()
-  })
+    }).then((res) => {
+      if (res.data.code === 200) {
+        // 使用活动服务记录创建文件夹活动
+        activityService.recordActivity(
+          '创建文件夹',
+          dialogForm.value.name || '文件夹',
+          res.data.data
+        ).catch(error => console.error('记录创建文件夹活动失败:', error));
+      }
+      freshTable();
+    })
 } // 创建文件夹
 const addTest = (row) => {
   console.log(typeof row.index)
