@@ -499,6 +499,76 @@ const removeTest = (row) => {
   }
   console.log(testArr.value)
 } // 将不需要的试题移除组卷列表
+
+// 难度等级转换函数
+const getDifficultyLabel = (hard) => {
+  // 将数字转换为对应的中文标签
+  const difficultyMap = {
+    '1': '入门',
+    '2': '简单',
+    '3': '中等',
+    '4': '困难',
+    '5': '挑战'
+  };
+
+  // 如果是数字字符串，直接映射
+  if (difficultyMap[hard]) {
+    return difficultyMap[hard];
+  }
+
+  // 如果是旧数据中的中文，保持原样显示
+  if (['入门', '简单', '中等', '困难', '挑战'].includes(hard)) {
+    return hard;
+  }
+
+  // 其他情况，尝试将其作为数字处理
+  const numHard = parseInt(hard);
+  if (!isNaN(numHard) && numHard >= 1 && numHard <= 5) {
+    return difficultyMap[numHard.toString()];
+  }
+
+  // 默认返回未知
+  return '未知';
+}
+
+// 根据难度返回标签类型
+const getDifficultyType = (hard) => {
+  // 将难度值转换为数字
+  let numHard;
+
+  // 如果是数字字符串
+  if (['1', '2', '3', '4', '5'].includes(hard)) {
+    numHard = parseInt(hard);
+  }
+  // 如果是中文
+  else if (hard === '入门') {
+    numHard = 1;
+  } else if (hard === '简单') {
+    numHard = 2;
+  } else if (hard === '中等') {
+    numHard = 3;
+  } else if (hard === '困难') {
+    numHard = 4;
+  } else if (hard === '挑战') {
+    numHard = 5;
+  }
+  // 尝试直接解析为数字
+  else {
+    numHard = parseInt(hard);
+    if (isNaN(numHard) || numHard < 1 || numHard > 5) {
+      numHard = 3; // 默认为中等
+    }
+  }
+
+  // 根据数字难度返回对应的标签类型
+  if (numHard <= 2) {
+    return 'success'; // 绿色：入门、简单
+  } else if (numHard === 3) {
+    return 'warning'; // 黄色：中等
+  } else {
+    return 'danger';  // 红色：困难、挑战
+  }
+}
 const downloadFile = (url) => {
   axios({
     url: url,
@@ -772,10 +842,10 @@ creatEventListener(); // 页面创建时开始监听页面高度
         <template #default="{row}">
           <el-tag
             size="small"
-            :type="row.hard === '简单' ? 'success' : row.hard === '中等' ? 'warning' : 'danger'"
+            :type="getDifficultyType(row.hard)"
             v-if="row.hard"
           >
-            {{ row.hard }}
+            {{ getDifficultyLabel(row.hard) }}
           </el-tag>
         </template>
       </el-table-column>

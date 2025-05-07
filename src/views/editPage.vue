@@ -185,9 +185,11 @@ getQuestion()
           style="width: 240px"
           placeholder="选择难度"
       >
-        <el-option label="简单" value="简单" />
-        <el-option label="中等" value="中等" />
-        <el-option label="困难" value="困难" />
+        <el-option label="入门" value="1" />
+        <el-option label="简单" value="2" />
+        <el-option label="中等" value="3" />
+        <el-option label="困难" value="4" />
+        <el-option label="挑战" value="5" />
       </el-select>
     </div>
     <div class="flex gap-4">
