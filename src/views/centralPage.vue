@@ -6,6 +6,7 @@ import { ElNotification } from "element-plus";
 import { ArrowDown } from "@element-plus/icons-vue";
 import axios from "axios";
 import activityService from "@/services/activityService";
+import testPaperService from "@/services/testPaperService";
 
 // 用户信息
 const userInfo = ref({
@@ -49,6 +50,17 @@ const recentActivities = ref([
   }
 ]);
 const activityLimit = ref(5); // 默认显示5条活动记录
+
+// 试卷创建历史
+const testPapers = ref([]);
+const paperLimit = ref(5); // 默认显示5条试卷记录
+const paperLoading = ref(false);
+const currentPaper = ref(null);
+const paperQuestions = ref([]);
+const paperDownloadUrl = ref('');
+
+// 试卷详情对话框
+const paperDetailDialogVisible = ref(false);
 
 // 修改密码对话框
 const passwordFormVisible = ref(false);
@@ -331,10 +343,107 @@ const loadMoreActivities = () => {
   getRecentActivities();
 };
 
+// 获取试卷创建历史
+const getTestPapers = async () => {
+  try {
+    paperLoading.value = true;
+    const papers = await testPaperService.getUserRecentPapers(paperLimit.value);
+    if (papers && papers.length > 0) {
+      testPapers.value = papers;
+    }
+  } catch (error) {
+    console.error('获取试卷创建历史失败:', error);
+  } finally {
+    paperLoading.value = false;
+  }
+};
+
+// 查看试卷详情
+const viewPaperDetail = async (paper) => {
+  try {
+    paperLoading.value = true;
+    currentPaper.value = paper;
+
+    // 获取试卷详情
+    const detail = await testPaperService.getPaperDetail(paper.id);
+    if (detail) {
+      paperQuestions.value = detail.questions || [];
+      paperDownloadUrl.value = detail.downloadUrl || '';
+      paperDetailDialogVisible.value = true;
+    } else {
+      ElNotification({
+        title: '获取试卷详情失败',
+        type: 'error',
+        duration: 3000
+      });
+    }
+  } catch (error) {
+    console.error('获取试卷详情失败:', error);
+    ElNotification({
+      title: '获取试卷详情失败',
+      message: '请稍后重试',
+      type: 'error',
+      duration: 3000
+    });
+  } finally {
+    paperLoading.value = false;
+  }
+};
+
+// 下载试卷
+const downloadPaper = async (fileName) => {
+  try {
+    if (!fileName) {
+      ElNotification({
+        title: '下载失败',
+        message: '文件名为空',
+        type: 'error',
+        duration: 3000
+      });
+      return;
+    }
+
+    // 获取下载链接
+    const url = await testPaperService.getPaperDownloadUrl(fileName);
+    if (url) {
+      // 创建一个临时链接并点击它来下载文件
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      ElNotification({
+        title: '下载失败',
+        message: '获取下载链接失败',
+        type: 'error',
+        duration: 3000
+      });
+    }
+  } catch (error) {
+    console.error('下载试卷失败:', error);
+    ElNotification({
+      title: '下载失败',
+      message: '请稍后重试',
+      type: 'error',
+      duration: 3000
+    });
+  }
+};
+
+// 加载更多试卷
+const loadMorePapers = () => {
+  paperLimit.value += 5;
+  getTestPapers();
+};
+
 onMounted(() => {
   getUserInfo();
   getStatistics();
   getRecentActivities();
+  getTestPapers();
 });
 </script>
 
@@ -377,6 +486,74 @@ onMounted(() => {
             <el-button type="danger" @click="logout">
               <el-icon><SwitchButton /></el-icon>
               退出登录
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 试卷创建历史 -->
+        <div class="papers-section mt-15">
+          <h3 class="section-title">试卷创建历史</h3>
+          <div v-if="testPapers.length > 0">
+            <el-table
+              :data="testPapers"
+              style="width: 100%"
+              border
+              v-loading="paperLoading"
+              row-key="id"
+              class="paper-table"
+              size="small"
+              max-height="400"
+            >
+              <el-table-column prop="title" label="试卷标题" min-width="120">
+                <template #default="scope">
+                  <el-tooltip :content="scope.row.title" placement="top" :show-after="500">
+                    <span class="paper-title">{{ scope.row.title }}</span>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+              <el-table-column prop="subject" label="科目" min-width="80" />
+              <el-table-column label="类型" width="80">
+                <template #default="scope">
+                  <el-tag :type="scope.row.isQuick ? 'success' : 'primary'" size="small">
+                    {{ scope.row.isQuick ? '快速' : '手动' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120">
+                <template #default="scope">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="viewPaperDetail(scope.row)"
+                    :loading="paperLoading && currentPaper?.id === scope.row.id"
+                  >
+                    <el-icon><View /></el-icon>
+                    详情
+                  </el-button>
+                  <el-button
+                    type="success"
+                    size="small"
+                    @click="downloadPaper(scope.row.fileName)"
+                  >
+                    <el-icon><Download /></el-icon>
+                    下载
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <!-- 加载更多按钮 -->
+            <div class="load-more-container" v-if="testPapers.length >= paperLimit">
+              <el-button type="primary" plain @click="loadMorePapers" size="small">
+                <el-icon><ArrowDown /></el-icon>
+                加载更多试卷
+              </el-button>
+            </div>
+          </div>
+          <div v-else class="no-papers">
+            <p>暂无试卷记录</p>
+            <el-button type="primary" @click="getTestPapers" size="small">
+              刷新试卷记录
             </el-button>
           </div>
         </div>
@@ -466,6 +643,82 @@ onMounted(() => {
     </el-row>
   </div>
 
+  <!-- 试卷详情对话框 -->
+  <el-dialog
+    v-model="paperDetailDialogVisible"
+    title="试卷详情"
+    width="800"
+    align-center
+    :close-on-click-modal="false"
+    class="paper-detail-dialog"
+  >
+    <div v-if="currentPaper" class="paper-detail-content">
+      <!-- 试卷基本信息 -->
+      <div class="paper-info-section">
+        <h3>基本信息</h3>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="试卷标题">{{ currentPaper.title }}</el-descriptions-item>
+          <el-descriptions-item label="科目">{{ currentPaper.subject }}</el-descriptions-item>
+          <el-descriptions-item label="考试班级">{{ currentPaper.classs }}</el-descriptions-item>
+          <el-descriptions-item label="考试时长">{{ currentPaper.time }} 分钟</el-descriptions-item>
+          <el-descriptions-item label="学年">{{ currentPaper.yearStart }}-{{ currentPaper.yearEnd }}</el-descriptions-item>
+          <el-descriptions-item label="学期">{{ currentPaper.term }}</el-descriptions-item>
+          <el-descriptions-item label="卷号">{{ currentPaper.number }}</el-descriptions-item>
+          <el-descriptions-item label="考试类型">{{ currentPaper.exam }}</el-descriptions-item>
+          <el-descriptions-item label="开/闭卷">{{ currentPaper.open }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ currentPaper.createTime }}</el-descriptions-item>
+          <el-descriptions-item label="命题教师">{{ currentPaper.mingTi }}</el-descriptions-item>
+          <el-descriptions-item label="审题教师">{{ currentPaper.shenTi }}</el-descriptions-item>
+          <el-descriptions-item label="审核教师">{{ currentPaper.shenHe }}</el-descriptions-item>
+          <el-descriptions-item label="审批教师">{{ currentPaper.shenPi }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <!-- 试卷题目列表 -->
+      <div class="paper-questions-section">
+        <h3>试卷题目</h3>
+        <el-table
+          :data="paperQuestions"
+          style="width: 100%"
+          border
+          v-loading="paperLoading"
+          row-key="id"
+          class="questions-table"
+        >
+          <el-table-column type="index" label="序号" width="60" />
+          <el-table-column prop="typeName" label="题型" width="120" />
+          <el-table-column prop="hard" label="难度" width="80" />
+          <el-table-column label="题目内容" min-width="300">
+            <template #default="scope">
+              <div class="question-content">
+                <div v-html="scope.row.description"></div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="score" label="分值" width="80" />
+        </el-table>
+
+        <div v-if="paperQuestions.length === 0" class="no-questions">
+          <p>暂无题目信息</p>
+        </div>
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="paperDetailDialogVisible = false">关闭</el-button>
+        <el-button
+          type="success"
+          @click="downloadPaper(currentPaper?.fileName)"
+          :disabled="!currentPaper?.fileName"
+        >
+          <el-icon><Download /></el-icon>
+          下载试卷
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
+
   <!-- 修改密码对话框 -->
   <el-dialog
     v-model="passwordFormVisible"
@@ -527,18 +780,22 @@ onMounted(() => {
   padding: 20px;
 }
 
+.mt-15 {
+  margin-top: 15px;
+}
+
 .user-card {
   background-color: #fff;
   border-radius: 8px;
   box-shadow: var(--box-shadow);
   padding: 20px;
-  height: 100%;
+  height: auto;
 
   .user-header {
     display: flex;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 20px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
     border-bottom: 1px solid var(--border-light);
 
     .user-avatar {
@@ -567,12 +824,12 @@ onMounted(() => {
   }
 
   .user-details {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 
     .detail-item {
       display: flex;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       color: var(--text-regular);
 
       .el-icon {
@@ -586,10 +843,12 @@ onMounted(() => {
   .user-actions {
     display: flex;
     justify-content: space-between;
+    margin-bottom: 0;
 
     .el-button {
       flex: 1;
       margin: 0 5px;
+      padding: 8px 15px;
 
       &:first-child {
         margin-left: 0;
@@ -662,6 +921,110 @@ onMounted(() => {
         font-size: 14px;
         color: var(--text-secondary);
         margin-top: 5px;
+      }
+    }
+  }
+}
+
+.papers-section {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+  padding: 20px;
+  margin-bottom: 20px;
+
+  .paper-table {
+    margin-bottom: 15px;
+
+    .paper-title {
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .el-button {
+      padding: 5px 8px;
+      margin-left: 5px;
+
+      .el-icon {
+        margin-right: 3px;
+      }
+    }
+  }
+
+  .no-papers {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: 4px;
+    margin: 10px 0;
+
+    p {
+      margin-bottom: 10px;
+    }
+
+    .el-button {
+      width: 120px;
+    }
+  }
+
+  .load-more-container {
+    margin-top: 10px;
+    text-align: center;
+  }
+}
+
+.paper-detail-dialog {
+  .paper-detail-content {
+    .paper-info-section {
+      margin-bottom: 20px;
+
+      h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: var(--text-primary);
+      }
+    }
+
+    .paper-questions-section {
+      h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: var(--text-primary);
+      }
+
+      .questions-table {
+        margin-bottom: 15px;
+
+        .question-content {
+          max-height: 200px;
+          overflow-y: auto;
+          padding: 5px;
+
+          img {
+            max-width: 100%;
+            height: auto;
+          }
+        }
+      }
+
+      .no-questions {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100px;
+        background-color: rgba(0, 0, 0, 0.02);
+        border-radius: 4px;
+        color: var(--text-secondary);
       }
     }
   }
