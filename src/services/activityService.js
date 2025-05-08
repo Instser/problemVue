@@ -7,6 +7,40 @@ import { storage } from '@/storage/storage';
  */
 const activityService = {
   /**
+   * 将数字难度转换为中文难度
+   * @param {string|number} hard 难度值
+   * @returns {string} 中文难度
+   */
+  getDifficultyLabel(hard) {
+    // 将数字转换为对应的中文标签
+    const difficultyMap = {
+      '1': '入门',
+      '2': '简单',
+      '3': '中等',
+      '4': '困难',
+      '5': '挑战'
+    };
+
+    // 如果是数字字符串，直接映射
+    if (difficultyMap[hard]) {
+      return difficultyMap[hard];
+    }
+
+    // 如果是旧数据中的中文，保持原样显示
+    if (['入门', '简单', '中等', '困难', '挑战'].includes(hard)) {
+      return hard;
+    }
+
+    // 其他情况，尝试将其作为数字处理
+    const numHard = parseInt(hard);
+    if (!isNaN(numHard) && numHard >= 1 && numHard <= 5) {
+      return difficultyMap[numHard.toString()];
+    }
+
+    // 默认返回中等
+    return '中等';
+  },
+  /**
    * 记录用户活动
    * @param {string} type 活动类型（创建试题、编辑试题、删除试题等）
    * @param {string} name 活动对象名称
@@ -141,7 +175,9 @@ const activityService = {
 
         // 添加难度信息
         if (question.hard) {
-          metadataParts.push(`${question.hard}难度`);
+          // 将数字难度转换为中文难度
+          const chineseDifficulty = this.getDifficultyLabel(question.hard);
+          metadataParts.push(`${chineseDifficulty}难度`);
         }
 
         // 添加课程信息

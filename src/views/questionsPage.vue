@@ -56,6 +56,7 @@ const testForm = ref({
 }) // 试卷基础信息的表单数据
 const testArr = ref([]) // 保存选择到试卷中的试题数据
 const testFormVisible = ref(false) // 试卷信息页面显示
+const quickTestFormVisible = ref(false) // 快速组卷页面显示
 const rules = {
   subject: [
     {
@@ -144,6 +145,37 @@ const addToFolderForm = ref({
   folderId: ''
 }) // 将试题添加到文件夹的表单数据
 const formRef = ref(null) // 控制试卷信息页面的ref
+const quickFormRef = ref(null) // 控制快速组卷页面的ref
+
+// 快速组卷表单数据
+const quickTestForm = ref({
+  // 基本信息
+  subject: '',
+  classs: '',
+  time: '',
+  yearStart: '',
+  yearEnd: '',
+  term: '',
+  number: '',
+  open: '闭卷',
+  exam: '考试',
+  mingTi: '',
+  shenTi: '',
+  shenHe: '',
+  shenPi: '',
+  // 题型设置
+  questionTypes: [
+    { type: '选择题', count: 5, enabled: true, difficulty: 3 },
+    { type: '填空题', count: 3, enabled: true, difficulty: 3 },
+    { type: '简答题', count: 2, enabled: true, difficulty: 3 },
+    { type: '证明题', count: 1, enabled: false, difficulty: 3 }
+  ],
+  // 智能推荐设置
+  useIntelligent: true,
+  balanceDifficulty: true,
+  preferNewQuestions: false,
+  chapterDistribution: 'balanced' // 'balanced', 'focused', 'random'
+})
 
 // 进度条变量
 const progressVisible = ref(false)
@@ -183,56 +215,96 @@ const getFolder = async () => {
   })
 } //加载文件及数据
 const loadData = async () => {
+  // 如果已经在加载中，则不重复加载
+  if (loading.value) return;
+
+  console.log('开始加载数据，页码:', pageParams.value.page);
   loading.value = true
-  axios.post('/api/questions/page', JSON.parse(JSON.stringify({
-        page: pageParams.value.page,
-        pageSize: pageParams.value.pageSize,
-        filterKey: 'ques_cour',
-        filterValue: [currentCourse.value.courseId],
-      }))
-  ).then(res => {
+
+  try {
+    const res = await axios.post('/api/questions/page', JSON.parse(JSON.stringify({
+          page: pageParams.value.page,
+          pageSize: pageParams.value.pageSize,
+          filterKey: 'ques_cour',
+          filterValue: [currentCourse.value.courseId],
+        }))
+    );
+
     if (res.data.code === 401) {
       storage.remove('isAuthenticated');
       router.push('/login')
+      return;
     }
+
     if (res.data.code === 200) {
+      // 增加页码，为下次加载做准备
       pageParams.value.page++
+
       // 将获取的题目数据全部传入题目数组
-      questionArr.value = res.data.data.list
-      // 将返回的数据遍历push到tableData,判断是否有题目
-      console.log(questionArr.value)
-      if (questionArr.value) {
+      questionArr.value = res.data.data.list || [];
+
+      // 将返回的数据遍历push到tableData
+      console.log('获取到题目数量:', questionArr.value.length);
+
+      if (questionArr.value && questionArr.value.length > 0) {
         for (let i = 0; i < questionArr.value.length; i++) {
           questionArr.value[i].index = tableData.value.length + 1
           tableData.value.push(questionArr.value[i])
         }
+
+        // 记录数据库中所有题目加上文件夹的数目
+        count.value = res.data.data.count + folderArr.value.length
+
+        // 通过比较得知是否还有能加载的题目
+        const hasMoreData = tableData.value.length < res.data.data.count + folderArr.value.length;
+        isLoading.value = hasMoreData;
+
+        console.log('数据加载完成:', {
+          当前数据量: tableData.value.length,
+          总数据量: count.value,
+          还有更多数据: hasMoreData
+        });
+      } else {
+        // 如果没有获取到数据，说明已经加载完全部数据
+        console.log('没有更多数据可加载');
+        isLoading.value = false;
       }
-      // 记录数据库中所有题目加上文件夹的数目
-      count.value = res.data.data.count + folderArr.value.length
-      // 通过比较得知是否还有能加载的题目,加上文件夹数量，不然会漏题。
-      isLoading.value = tableData.value.length < res.data.data.count + folderArr.value.length;
-      // 处理后将loading状态解锁
-      loading.value = false
     } else if (storage.get('isAuthenticated')) {
       ElNotification({
         title: '未查询到该课程的题目',
         type: 'warning',
         duration: 0
       });
-      loading.value = false
     }
-  }).catch(e => {
-    console.log(e)
-  });
+  } catch (e) {
+    console.error('加载数据出错:', e);
+    ElNotification({
+      title: '加载数据失败',
+      type: 'error',
+      duration: 3000
+    });
+  } finally {
+    // 无论成功失败，都要解除加载状态
+    loading.value = false;
+  }
 } // 加载题目数据
 const freshTable = () => {
+  console.log('刷新表格数据');
   // 清空table
   tableData.value = []
   multipleSelection.value.questionList = []
   multipleSelection.value.folderList = []
-  getFolder()
+
+  // 重置状态变量
+  count.value = 0
+  currenCount.value = 0
+  isLoading.value = true
+
   // 重置page参数
   pageParams.value.page = 1
+
+  // 先获取文件夹，再加载题目数据
+  getFolder()
   loadData()
 }  // 刷新table内容
 const handleClick = (row) => {
@@ -406,8 +478,18 @@ const courseSelect = async (courseItem) => {
   }
 } // 切换课程并获取文件夹和题目
 const creatEventListener = () => {
+  // 移除可能存在的旧监听器，防止重复监听
+  window.removeEventListener('resize', handleResize)
+  window.removeEventListener('scroll', handleScroll)
+
+  // 添加新的监听器
   window.addEventListener('resize', handleResize)
   window.addEventListener('scroll', handleScroll)
+
+  console.log('事件监听器已设置')
+
+  // 初始化时手动触发一次resize，确保表格高度正确
+  handleResize()
 } //设置页面大小监听器和滚动监听
 
 const handleResize = () => {
@@ -415,14 +497,31 @@ const handleResize = () => {
 } //获取窗口高度
 
 const handleScroll = () => {
-  // 检查是否滚动到底部附近
-  if (isLoading.value && !loading.value) {
-    const scrollTop = document.documentElement.scrollTop || document.body.scrollTop
-    const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight
-    const clientHeight = document.documentElement.clientHeight || window.innerHeight
+  // 获取滚动位置信息
+  const scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+  const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight
+  const clientHeight = document.documentElement.clientHeight || window.innerHeight
 
-    // 当滚动到距离底部200px时加载更多数据
-    if (scrollTop + clientHeight >= scrollHeight - 200) {
+  // 计算距离底部的距离
+  const distanceToBottom = scrollHeight - scrollTop - clientHeight
+
+  // 调试信息
+  console.log('滚动检测:', {
+    isLoading: isLoading.value,
+    loading: loading.value,
+    scrollTop,
+    scrollHeight,
+    clientHeight,
+    distanceToBottom,
+    tableDataLength: tableData.value.length,
+    totalCount: count.value
+  })
+
+  // 检查是否滚动到底部附近，并且还有更多数据可加载，且当前不在加载状态
+  if (isLoading.value && !loading.value) {
+    // 当滚动到距离底部300px时加载更多数据（增大触发区域）
+    if (distanceToBottom < 300) {
+      console.log('触发加载更多数据')
       loadData()
     }
   }
@@ -671,6 +770,98 @@ const clearTest = () => {
     removeTest(item)
   })
 } //点击清空组卷列表中的试题
+
+// 快速组卷方法
+const createQuickTest = async () => {
+  quickTestFormVisible.value = false
+  progressVisible.value = true
+
+  // 非线性进度实现（贝塞尔曲线缓动）
+  startTime = Date.now()
+  const animate = () => {
+    const elapsed = Date.now() - startTime
+    const progress = elapsed / 8000 // 8秒总时间
+
+    // 使用三次贝塞尔缓动函数
+    progressPercent.value = Math.min(1 - Math.pow(1 - progress, 3), 1) * 100
+
+    if (progress < 1) {
+      requestAnimationFrame(animate)
+    }
+  }
+  requestAnimationFrame(animate)
+
+  const form = unref(quickFormRef)
+  form.validate(async valid => {
+    if (valid) {
+      try {
+        // 构建请求参数
+        const params = {
+          title: {
+            subject: quickTestForm.value.subject,
+            classs: quickTestForm.value.classs,
+            time: quickTestForm.value.time,
+            yearStart: quickTestForm.value.yearStart,
+            yearEnd: quickTestForm.value.yearEnd,
+            term: quickTestForm.value.term,
+            number: quickTestForm.value.number,
+            open: quickTestForm.value.open,
+            exam: quickTestForm.value.exam,
+            mingTi: quickTestForm.value.mingTi,
+            shenTi: quickTestForm.value.shenTi,
+            shenHe: quickTestForm.value.shenHe,
+            shenPi: quickTestForm.value.shenPi
+          },
+          questionTypes: quickTestForm.value.questionTypes.filter(type => type.enabled),
+          settings: {
+            useIntelligent: quickTestForm.value.useIntelligent,
+            balanceDifficulty: quickTestForm.value.balanceDifficulty,
+            preferNewQuestions: quickTestForm.value.preferNewQuestions,
+            chapterDistribution: quickTestForm.value.chapterDistribution,
+            courseId: currentCourse.value.courseId
+          }
+        }
+
+        // 发送请求
+        const res = await axios.post('/api/questions/quickBuildTest', params)
+
+        if (res.data.code === 200) {
+          ElNotification({
+            title: '试卷组建成功,请到浏览器下载文件夹查看试卷',
+            type: 'success'
+          });
+          downloadFile(res.data.data)
+
+          // 清空已选题目
+          clearTest()
+
+          // 将推荐的题目添加到已选列表中
+          if (res.data.data.questions && res.data.data.questions.length > 0) {
+            res.data.data.questions.forEach(question => {
+              // 查找题目并添加到已选列表
+              const foundQuestion = tableData.value.find(item => item.id === question.id)
+              if (foundQuestion) {
+                addTest(foundQuestion)
+              }
+            })
+          }
+        } else {
+          ElNotification({
+            title: '试卷组建失败',
+            type: 'error',
+            message: res.data.message || '未知错误'
+          })
+        }
+      } catch (e) {
+        console.error('快速组卷失败:', e)
+        ElNotification.error({
+          title: '网络错误',
+          message: '无法连接到服务器',
+        });
+      }
+    }
+  })
+}
 const searchQuestion = () => {
   if (search.value === '') {
     freshTable();
@@ -718,20 +909,40 @@ const searchQuestion = () => {
 
 
 onBeforeUnmount(() => {
+  console.log('组件销毁，移除事件监听');
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('scroll', handleScroll)
 });// 组件销毁前解除监听释放内存
 
-creatEventListener(); // 页面创建时开始监听页面高度
+// 设置初始状态
+isLoading.value = true;
+loading.value = false;
+currenCount.value = 0;
+
+// 设置事件监听
+creatEventListener();
 
 // 通过异步的await保证先获取课程再获取文件夹和题目
 (async () => {
   try {
+    console.log('开始初始化数据');
     await getCourse();
-    await getFolder()
+    await getFolder();
     await loadData();
+
+    // 初始化完成后，手动触发一次滚动检测
+    setTimeout(() => {
+      handleScroll();
+      console.log('初始化完成，触发滚动检测');
+    }, 500);
   } catch (e) {
-    console.log('初始化课程、题目数据错误', e)
+    console.error('初始化课程、题目数据错误', e);
+    ElNotification({
+      title: '数据加载失败',
+      message: '请刷新页面重试',
+      type: 'error',
+      duration: 3000
+    });
   }
 })();
 </script>
@@ -779,6 +990,10 @@ creatEventListener(); // 页面创建时开始监听页面高度
           <el-button type="success" @click="testFormVisible = true">
             <el-icon><Document /></el-icon>
             <span>创建试卷</span>
+          </el-button>
+          <el-button type="primary" @click="quickTestFormVisible = true">
+            <el-icon><Document /></el-icon>
+            <span>快速组卷</span>
           </el-button>
           <el-button @click="clearTest()">
             <el-icon><RemoveFilled /></el-icon>
@@ -897,6 +1112,19 @@ creatEventListener(); // 页面创建时开始监听页面高度
             <span>已加载全部数据</span>
           </el-tag>
         </div>
+      </div>
+
+      <!-- 加载更多按钮 - 作为滚动加载的备选方案 -->
+      <div class="load-more-container" v-if="isLoading && !loading">
+        <el-button
+          type="primary"
+          @click="loadData"
+          :loading="loading"
+          class="load-more-button"
+        >
+          <el-icon><Bottom /></el-icon>
+          <span>点击加载更多数据</span>
+        </el-button>
       </div>
     </div>
   </div>
@@ -1191,6 +1419,183 @@ creatEventListener(); // 页面创建时开始监听页面高度
       </el-form-item>
     </el-form>
   </el-dialog>
+<!--  快速组卷对话框-->
+  <el-dialog v-model="quickTestFormVisible"
+             title="快速组卷"
+             width="800"
+             :close-on-click-modal="false"
+             class="custom-dialog quick-test-dialog"
+             @closed="() => {}">
+    <el-form
+        style="max-width: 100%"
+        ref="quickFormRef"
+        :model="quickTestForm"
+        :rules="rules"
+        label-position="top"
+        class="quick-test-form"
+        :size="'default'"
+        status-icon
+    >
+      <!-- 基本信息部分 -->
+      <div class="form-section">
+        <h3 class="section-title">试卷基本信息</h3>
+        <div class="form-grid">
+          <el-form-item label="试卷科目" prop="subject">
+            <el-input v-model="quickTestForm.subject"/>
+          </el-form-item>
+          <el-form-item label="班级" prop="classs">
+            <el-input v-model="quickTestForm.classs"/>
+          </el-form-item>
+          <el-form-item label="考试时长" prop="time">
+            <el-input v-model="quickTestForm.time"/>
+          </el-form-item>
+          <el-form-item label="章节" prop="number">
+            <el-input v-model="quickTestForm.number"/>
+          </el-form-item>
+          <el-form-item label="学年" required>
+            <el-col :span="11">
+              <el-form-item prop="yearStart">
+                <el-date-picker
+                    v-model="quickTestForm.yearStart"
+                    type="year"
+                    label="选择起始年份"
+                    placeholder="选择起始年份"
+                    value-format="YYYY"
+                    style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col class="text-center" :span="2">
+              <span class="text-gray-500">-</span>
+            </el-col>
+            <el-col :span="11">
+              <el-form-item prop="yearEnd">
+                <el-date-picker
+                    v-model="quickTestForm.yearEnd"
+                    type="year"
+                    label="选择结束年份"
+                    placeholder="选择结束年份"
+                    value-format="YYYY"
+                    style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+          </el-form-item>
+          <el-form-item label="学期" prop="term">
+            <el-input v-model="quickTestForm.term"/>
+          </el-form-item>
+          <el-form-item label="开/闭卷" prop="open">
+            <el-radio-group v-model="quickTestForm.open">
+              <el-radio-button label="开卷" value="开卷"/>
+              <el-radio-button label="闭卷" value="闭卷"/>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="考试类型" prop="exam">
+            <el-radio-group v-model="quickTestForm.exam">
+              <el-radio-button label="考试" value="考试"/>
+              <el-radio-button label="考察" value="考察"/>
+            </el-radio-group>
+          </el-form-item>
+        </div>
+      </div>
+
+      <!-- 题型设置部分 -->
+      <div class="form-section">
+        <h3 class="section-title">题型设置</h3>
+        <div class="question-types-container">
+          <div v-for="type in quickTestForm.questionTypes" :key="type.type" class="question-type-item">
+            <div class="type-header">
+              <el-checkbox v-model="type.enabled">{{ type.type }}</el-checkbox>
+            </div>
+            <div class="type-settings" v-if="type.enabled">
+              <div class="setting-item">
+                <span class="setting-label">数量:</span>
+                <el-input-number v-model="type.count" :min="1" :max="20" size="small" />
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">难度:</span>
+                <el-slider v-model="type.difficulty" :min="1" :max="5" :step="1" :marks="{
+                  1: '入门',
+                  2: '简单',
+                  3: '中等',
+                  4: '困难',
+                  5: '挑战'
+                }" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 智能推荐设置部分 -->
+      <div class="form-section">
+        <h3 class="section-title">智能推荐设置</h3>
+        <div class="intelligent-settings">
+          <el-form-item label="使用智能推荐">
+            <el-switch v-model="quickTestForm.useIntelligent" />
+          </el-form-item>
+
+          <template v-if="quickTestForm.useIntelligent">
+            <el-form-item label="均衡难度分布">
+              <el-switch v-model="quickTestForm.balanceDifficulty" />
+              <div class="setting-description">
+                启用后，系统会尝试在保持平均难度的同时，确保试题难度分布合理
+              </div>
+            </el-form-item>
+
+            <el-form-item label="优先选择新题">
+              <el-switch v-model="quickTestForm.preferNewQuestions" />
+              <div class="setting-description">
+                启用后，系统会优先选择最近添加的试题
+              </div>
+            </el-form-item>
+
+            <el-form-item label="章节分布">
+              <el-radio-group v-model="quickTestForm.chapterDistribution">
+                <el-radio-button label="balanced">均衡分布</el-radio-button>
+                <el-radio-button label="focused">集中分布</el-radio-button>
+                <el-radio-button label="random">随机分布</el-radio-button>
+              </el-radio-group>
+              <div class="setting-description">
+                均衡分布：试题会尽量覆盖所有章节<br>
+                集中分布：试题会集中在特定章节<br>
+                随机分布：不考虑章节因素随机选择
+              </div>
+            </el-form-item>
+          </template>
+        </div>
+      </div>
+
+      <!-- 教师信息部分 -->
+      <div class="form-section">
+        <h3 class="section-title">教师信息</h3>
+        <div class="form-grid">
+          <el-form-item label="命题老师" prop="mingTi">
+            <el-input v-model="quickTestForm.mingTi" placeholder="输入命题老师" clearable/>
+          </el-form-item>
+          <el-form-item label="审题老师" prop="shenTi">
+            <el-input v-model="quickTestForm.shenTi" placeholder="输入审题老师" clearable/>
+          </el-form-item>
+          <el-form-item label="审核老师" prop="shenHe">
+            <el-input v-model="quickTestForm.shenHe" placeholder="输入审核老师" clearable/>
+          </el-form-item>
+          <el-form-item label="审批老师" prop="shenPi">
+            <el-input v-model="quickTestForm.shenPi" placeholder="输入审批老师" clearable/>
+          </el-form-item>
+        </div>
+      </div>
+
+      <el-form-item>
+        <div class="form-actions">
+          <el-button @click="quickTestFormVisible = false">取消</el-button>
+          <el-button type="primary" @click="createQuickTest()">
+            <el-icon><Document /></el-icon>
+            <span>生成试卷</span>
+          </el-button>
+        </div>
+      </el-form-item>
+    </el-form>
+  </el-dialog>
 <!--  进度条-->
   <el-dialog
       :model-value="progressVisible"
@@ -1310,6 +1715,7 @@ creatEventListener(); // 页面创建时开始监听页面高度
   box-shadow: var(--box-shadow);
   overflow: hidden;
   transition: all 0.3s;
+  position: relative; /* 确保相对定位，便于内部元素绝对定位 */
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
@@ -1368,6 +1774,29 @@ creatEventListener(); // 页面创建时开始监听页面高度
 
   .loading-container {
     padding: 16px;
+  }
+
+  /* 加载更多按钮容器样式 */
+  .load-more-container {
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+    background-color: var(--background-color);
+    border-top: 1px solid var(--border-light);
+
+    .load-more-button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      animation: pulse 1.5s infinite;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+    }
   }
 
   @keyframes pulse {
@@ -1666,5 +2095,93 @@ creatEventListener(); // 页面创建时开始监听页面高度
 
 .chosenClass {
   background-color: var(--primary-light);
+}
+
+/* 快速组卷对话框样式 */
+.quick-test-dialog {
+  .form-section {
+    margin-bottom: 24px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 16px;
+    background-color: #f9f9f9;
+
+    .section-title {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 18px;
+      color: var(--primary-color);
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 8px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+      }
+
+      .el-form-item:nth-child(5) {
+        grid-column: span 2;
+      }
+    }
+  }
+
+  .question-types-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+
+    .question-type-item {
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 12px;
+      background-color: white;
+
+      .type-header {
+        margin-bottom: 12px;
+        font-weight: bold;
+      }
+
+      .type-settings {
+        .setting-item {
+          margin-bottom: 12px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+
+          .setting-label {
+            min-width: 50px;
+            font-size: 14px;
+            color: var(--text-secondary);
+          }
+
+          .el-slider {
+            flex: 1;
+          }
+        }
+      }
+    }
+  }
+
+  .intelligent-settings {
+    background-color: white;
+    border-radius: 6px;
+    padding: 16px;
+
+    .setting-description {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+  }
 }
 </style>

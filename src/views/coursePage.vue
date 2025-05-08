@@ -31,7 +31,15 @@ const currentEditCourseId = ref(null)
 const currentEditCourseName = ref('')
 
 const getPage = (isInitial = false) => {
+  // 如果已经在加载中，则不重复加载
+  if (loading.value) {
+    console.log('已经在加载中，忽略此次请求');
+    return;
+  }
+
+  console.log('开始加载课程数据，页码:', params.value.page, '是否初始化:', isInitial);
   loading.value = true
+
   axios.get('/api/course/page', {
     params: {
       page: params.value.page,
@@ -39,40 +47,81 @@ const getPage = (isInitial = false) => {
     }
   }).then(res => {
     if (res.data.code === 200) {
+      const newData = res.data.data.list || [];
+      console.log('获取到课程数量:', newData.length);
+
       if (isInitial) {
-        tableData.value = res.data.data.list
+        tableData.value = newData;
       } else {
-        tableData.value = [...tableData.value, ...res.data.data.list]
+        tableData.value = [...tableData.value, ...newData];
       }
-      count.value = res.data.data.count
+      count.value = res.data.data.count;
 
       // 判断是否还有更多数据
-      hasMoreData.value = tableData.value.length < count.value
+      const moreData = tableData.value.length < count.value;
+      hasMoreData.value = moreData;
+
+      console.log('数据加载完成:', {
+        当前数据量: tableData.value.length,
+        总数据量: count.value,
+        还有更多数据: moreData
+      });
 
       // 如果还有更多数据，增加页码
       if (hasMoreData.value) {
-        params.value.page++
+        params.value.page++;
       }
-    }
-    if (res.data.code === 401) {
+    } else if (res.data.code === 401) {
+      console.log('用户未授权，跳转到登录页面');
       storage.remove('isAuthenticated');
-      router.push('/login')
+      router.push('/login');
+    } else {
+      console.error('加载课程数据失败:', res.data);
+      ElNotification({
+        title: '加载失败',
+        message: res.data.msg || '获取课程数据失败',
+        type: 'error',
+        duration: 3000
+      });
     }
-    loading.value = false
   }).catch(err => {
-    console.error('Failed to fetch courses:', err)
-    loading.value = false
-  })
+    console.error('请求课程数据出错:', err);
+    ElNotification({
+      title: '加载失败',
+      message: '网络错误，请稍后重试',
+      type: 'error',
+      duration: 3000
+    });
+  }).finally(() => {
+    loading.value = false;
+  });
 }
 const handleScroll = () => {
-  // 检查是否滚动到底部附近
-  if (hasMoreData.value && !loading.value) {
-    const scrollTop = document.documentElement.scrollTop || document.body.scrollTop
-    const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight
-    const clientHeight = document.documentElement.clientHeight || window.innerHeight
+  // 获取滚动位置信息
+  const scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+  const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight
+  const clientHeight = document.documentElement.clientHeight || window.innerHeight
 
-    // 当滚动到距离底部200px时加载更多数据
-    if (scrollTop + clientHeight >= scrollHeight - 200) {
+  // 计算距离底部的距离
+  const distanceToBottom = scrollHeight - scrollTop - clientHeight
+
+  // 调试信息
+  console.log('课程页面滚动检测:', {
+    hasMoreData: hasMoreData.value,
+    loading: loading.value,
+    scrollTop,
+    scrollHeight,
+    clientHeight,
+    distanceToBottom,
+    tableDataLength: tableData.value.length,
+    totalCount: count.value
+  })
+
+  // 检查是否滚动到底部附近，并且还有更多数据可加载，且当前不在加载状态
+  if (hasMoreData.value && !loading.value) {
+    // 当滚动到距离底部300px时加载更多数据（增大触发区域）
+    if (distanceToBottom < 300) {
+      console.log('触发加载更多课程数据')
       getPage()
     }
   }
@@ -85,9 +134,13 @@ const courseDelete = (row) => {
     }
   }).then(res => {
     if (res.data.code === 200) {
-      // 重置页码并重新加载
+      // 重置页码和状态
       params.value.page = 1
+      hasMoreData.value = true
+
+      // 重新加载数据
       getPage(true);
+
       ElNotification({
         title: '删除成功',
         type: 'success'
@@ -129,11 +182,15 @@ const creatCourse = () => {
     name: dialogForm.value.name,
     description: dialogForm.value.description
   }))).then(res => {
-    console.log(res.data.code)
+    console.log('创建课程响应:', res.data.code)
     if (res.data.code === 200) {
-      // 重置页码并重新加载
+      // 重置页码和状态
       params.value.page = 1
+      hasMoreData.value = true
+
+      // 重新加载数据
       getPage(true);
+
       ElNotification({
         title: '创建成功',
         type: 'success'
@@ -177,10 +234,13 @@ const primaryCourse = () => {
     name: dialogForm.value.name,
     description: dialogForm.value.description
   }))).then(res => {
-    // 重置页码并重新加载
+    // 重置页码和状态
     params.value.page = 1
+    hasMoreData.value = true
+
+    // 重新加载数据
     getPage(true)
-    console.log(res)
+    console.log('修改课程响应:', res.data)
 
     if (res.data.code === 200) {
       ElNotification({
@@ -272,18 +332,46 @@ const saveTeachers = () => {
     console.error('用户ID不存在，无法记录活动');
   }
 
+  // 重置页码和状态
+  params.value.page = 1
+  hasMoreData.value = true
+
   // 重新加载数据
   getPage(true);
 }
+// 设置事件监听器
+const setupEventListeners = () => {
+  // 移除可能存在的旧监听器，防止重复监听
+  window.removeEventListener('scroll', handleScroll)
+
+  // 添加新的监听器
+  window.addEventListener('scroll', handleScroll)
+
+  console.log('课程页面滚动事件监听器已设置')
+}
+
 onMounted(() => {
+  console.log('课程管理页面初始化')
+
+  // 设置初始状态
+  hasMoreData.value = true
+  loading.value = false
+
+  // 设置事件监听器
+  setupEventListeners()
+
   // 初始加载数据
   getPage(true)
 
-  // 添加滚动监听
-  window.addEventListener('scroll', handleScroll)
+  // 初始化完成后，手动触发一次滚动检测
+  setTimeout(() => {
+    handleScroll()
+    console.log('初始化完成，触发滚动检测')
+  }, 500)
 })
 
 onBeforeUnmount(() => {
+  console.log('课程管理页面销毁，移除事件监听')
   // 移除滚动监听
   window.removeEventListener('scroll', handleScroll)
 })
@@ -561,6 +649,19 @@ onBeforeUnmount(() => {
         <span>已加载全部课程</span>
       </el-tag>
     </div>
+
+    <!-- 加载更多按钮 - 作为滚动加载的备选方案 -->
+    <div class="load-more-container" v-if="hasMoreData && !loading">
+      <el-button
+        type="primary"
+        @click="getPage()"
+        :loading="loading"
+        class="load-more-button"
+      >
+        <el-icon><Bottom /></el-icon>
+        <span>点击加载更多课程</span>
+      </el-button>
+    </div>
   </div>
 </template>
 
@@ -738,6 +839,26 @@ onBeforeUnmount(() => {
       padding: 8px 16px;
       font-size: 14px;
       animation: pulse 1.5s infinite;
+    }
+  }
+
+  .load-more-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+
+    .load-more-button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      animation: pulse 1.5s infinite;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
     }
   }
 

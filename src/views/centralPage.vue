@@ -98,12 +98,51 @@ const isQuestionActivity = (type) => {
   return ['创建试题', '编辑试题', '删除试题'].includes(type);
 };
 
+// 将数字难度转换为中文难度
+const getDifficultyLabel = (hard) => {
+  // 将数字转换为对应的中文标签
+  const difficultyMap = {
+    '1': '入门',
+    '2': '简单',
+    '3': '中等',
+    '4': '困难',
+    '5': '挑战'
+  };
+
+  // 如果是数字字符串，直接映射
+  if (difficultyMap[hard]) {
+    return difficultyMap[hard];
+  }
+
+  // 如果是旧数据中的中文，保持原样显示
+  if (['入门', '简单', '中等', '困难', '挑战'].includes(hard)) {
+    return hard;
+  }
+
+  // 其他情况，尝试将其作为数字处理
+  const numHard = parseInt(hard);
+  if (!isNaN(numHard) && numHard >= 1 && numHard <= 5) {
+    return difficultyMap[numHard.toString()];
+  }
+
+  // 默认返回中等
+  return '中等';
+};
+
 // 解析活动名称，尝试提取元数据和内容
 const parseActivityName = (name) => {
   try {
     // 尝试解析JSON格式的活动名称
     const parsed = JSON.parse(name);
     if (parsed && typeof parsed === 'object' && 'metadata' in parsed && 'content' in parsed) {
+      // 处理元数据中的难度信息
+      if (parsed.metadata) {
+        // 查找并替换难度信息
+        const difficultyRegex = /(\d+)难度/g;
+        parsed.metadata = parsed.metadata.replace(difficultyRegex, (_match, p1) => {
+          return `${getDifficultyLabel(p1)}难度`;
+        });
+      }
       return parsed;
     }
   } catch (e) {
