@@ -21,6 +21,7 @@ module.exports = defineConfig({
     ]
   },
   devServer:{
+    port: 8080, // 设置前端端口为8080
     client: {
       overlay: false
     },

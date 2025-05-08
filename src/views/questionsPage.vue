@@ -668,27 +668,37 @@ const getDifficultyType = (hard) => {
     return 'danger';  // 红色：困难、挑战
   }
 }
-const downloadFile = (url) => {
-  axios({
-    url: url,
-    method: 'GET',
-    responseType: 'blob',
-  }).then(response => {
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'test.docx');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url); // 清理生成的URL，释放资源
-  }).catch(error => {
-    console.error('下载文件失败:', error);
-  });
+// 下载文件函数
+const downloadFile = (data) => {
+  // 检查参数是否为对象且包含url属性
+  let fileUrl = '';
+  if (typeof data === 'object' && data !== null) {
+    if (data.url) {
+      fileUrl = data.url;
+    } else {
+      console.error('下载参数错误: 对象中没有url属性', data);
+      ElNotification({
+        title: '下载失败',
+        message: '无法获取下载地址',
+        type: 'error'
+      });
+      return;
+    }
+  } else {
+    // 如果是字符串，直接使用
+    fileUrl = data;
+  }
+
+  console.log('下载文件URL:', fileUrl);
+
+  // 直接打开URL，让浏览器处理下载
+  window.open(fileUrl, '_blank');
 }
 const createTest = async () => {
   testFormVisible.value = false
   progressVisible.value = true
+  // 重置生成的试卷数据
+  generatedPaperData.value = null
 
   // 非线性进度实现（贝塞尔曲线缓动）
   startTime = Date.now()
@@ -745,10 +755,11 @@ const createTest = async () => {
         }))).then(res => {
           if (res.data.code === 200) {
             ElNotification({
-              title: '试卷组建成功,请到浏览器下载文件夹查看试卷',
+              title: '试卷组建成功，点击"下载试卷"按钮下载',
               type: 'success'
             });
-            downloadFile(res.data.data)
+            // 保存生成的试卷数据，但不自动下载
+            generatedPaperData.value = res.data.data
           } else {
             ElNotification({
               title: '试卷组建失败',
@@ -771,10 +782,15 @@ const clearTest = () => {
   })
 } //点击清空组卷列表中的试题
 
+// 存储生成的试卷数据，用于下载按钮
+const generatedPaperData = ref(null)
+
 // 快速组卷方法
 const createQuickTest = async () => {
   quickTestFormVisible.value = false
   progressVisible.value = true
+  // 重置生成的试卷数据
+  generatedPaperData.value = null
 
   // 非线性进度实现（贝塞尔曲线缓动）
   startTime = Date.now()
@@ -827,10 +843,12 @@ const createQuickTest = async () => {
 
         if (res.data.code === 200) {
           ElNotification({
-            title: '试卷组建成功,请到浏览器下载文件夹查看试卷',
+            title: '试卷组建成功，点击"下载试卷"按钮下载',
             type: 'success'
           });
-          downloadFile(res.data.data)
+
+          // 保存生成的试卷数据，但不自动下载
+          generatedPaperData.value = res.data.data
 
           // 清空已选题目
           clearTest()
@@ -861,6 +879,19 @@ const createQuickTest = async () => {
       }
     }
   })
+}
+
+// 下载生成的试卷
+const downloadGeneratedPaper = () => {
+  if (generatedPaperData.value) {
+    downloadFile(generatedPaperData.value)
+  } else {
+    ElNotification({
+      title: '下载失败',
+      message: '没有可下载的试卷',
+      type: 'warning'
+    })
+  }
 }
 const searchQuestion = () => {
   if (search.value === '') {
@@ -1633,7 +1664,7 @@ creatEventListener();
       <el-button
           :type="progressPercent < 100 ? 'info' : 'success'"
           :disabled="progressPercent < 100"
-          @click="progressVisible = false;progressPercent = 0;"
+          @click="progressPercent < 100 ? null : downloadGeneratedPaper(); progressVisible = false; progressPercent = 0;"
           class="progress-button"
       >
         <el-icon v-if="progressPercent < 100"><Loading /></el-icon>
