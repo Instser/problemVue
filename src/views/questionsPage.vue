@@ -3,7 +3,7 @@ import {onBeforeUnmount, ref, unref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
 import {ArrowDown, Search, Folder, Edit, Document, Delete, RemoveFilled, Reading, Plus, Remove, Bottom, InfoFilled, Select, Loading, CircleCheckFilled, Download, CopyDocument} from "@element-plus/icons-vue";
-import {ElNotification} from "element-plus";
+import {ElNotification, ElMessageBox} from "element-plus";
 import {storage} from "@/storage/storage";
 import draggable from 'vue-draggable-next';
 import activityService from "@/services/activityService";
@@ -327,7 +327,8 @@ const handleSelectionChange = (val) => {
   }
   // 判断item类型，然后分别加入题目或者文件夹数组
   for (let i = 0; i < val.length; i++) {
-    if (val[i].foldDesc) {
+    // 使用name属性来判断是否为文件夹，与handleSingleDelete保持一致
+    if (val[i].name) {
       multipleSelection.value.folderList.push(val[i]);
     } else {
       multipleSelection.value.questionList.push(val[i]);
@@ -337,13 +338,13 @@ const handleSelectionChange = (val) => {
   console.log(multipleSelection.value)
 }//多选逻辑
 const addToFolder = () => {
-  const questionIdArr = ref(multipleSelection.value.questionList.map(question => question.id))
-  console.log(questionIdArr.value)
-  if (questionIdArr.value[0]) {
+  const questionIdArr = multipleSelection.value.questionList.map(question => question.id);
+  console.log(questionIdArr)
+  if (questionIdArr.length > 0) {
     axios.post('/api/folder_ques_list/moveToFolder', '', {
           params: {
             folderId: addToFolderForm.value.folderId,
-            quesIds: questionIdArr.value.join(',')
+            quesIds: questionIdArr.join(',')
           }
         }
     ).then(res => {
@@ -363,21 +364,25 @@ const addToFolder = () => {
     })
   }
 } //将题目批量添加至文件夹
-const deleteEvent = () => {
-  const folderIdArr = ref(multipleSelection.value.folderList.map(folder => folder.id))
-  const questionIdArr = ref(multipleSelection.value.questionList.map(question => question.id))
-  console.log(questionIdArr.value)
-  if (folderIdArr.value[0]) {
-    console.log('有文件夹删除')
+// 执行删除操作的函数
+const performDelete = (folderIds, questionIds) => {
+  // 删除状态标记
+  const deleteLoading = ref(false);
+
+  // 删除文件夹
+  if (folderIds && folderIds.length > 0) {
+    deleteLoading.value = true;
+    console.log('开始删除文件夹:', folderIds);
+
     axios.post('/api/quesFolder/deletedFolder', '', {
       params: {
-        id: folderIdArr.value.join(',')
+        id: folderIds.join(',')
       }
     }).then(res => {
       if (res.data.code === 200) {
-        for (let i = 0; i < folderIdArr.value.length; i++) {
-          const dataIndex = tableData.value.findIndex(item => item.id === folderIdArr.value[i])
-          console.log(dataIndex)
+        for (let i = 0; i < folderIds.length; i++) {
+          const dataIndex = tableData.value.findIndex(item => item.id === folderIds[i])
+          console.log('找到文件夹索引:', dataIndex)
           // 过滤到相同id的题目，只删除文件夹
           if (dataIndex !== -1 && tableData.value[dataIndex].name) {
             tableData.value.splice(dataIndex, 1)
@@ -391,10 +396,10 @@ const deleteEvent = () => {
 
         // 记录用户活动
         const userId = storage.get('userId');
-        console.log('删除文件夹时的用户ID:', userId); // 调试用
+        console.log('删除文件夹时的用户ID:', userId);
         if (userId) {
           // 对每个删除的文件夹记录一次活动
-          folderIdArr.value.forEach(folderId => {
+          folderIds.forEach(folderId => {
             const folder = folderArr.value.find(f => f.id === folderId);
             axios.post('/api/userActivity/record', null, {
               params: {
@@ -412,29 +417,42 @@ const deleteEvent = () => {
         } else {
           console.error('用户ID不存在，无法记录活动');
         }
-
-        // 重置文件夹多选列表
-        multipleSelection.value.folderList = [];
       } else {
         ElNotification({
           title: '文件夹删除失败',
+          message: res.data.message || '服务器返回错误，请稍后重试',
           type: 'error'
         });
       }
-    })
+    }).catch(error => {
+      console.error('删除文件夹请求失败:', error);
+      ElNotification({
+        title: '删除请求失败',
+        message: '网络错误或服务器异常，请稍后重试',
+        type: 'error'
+      });
+    }).finally(() => {
+      deleteLoading.value = false;
+      // 重置文件夹多选列表
+      multipleSelection.value.folderList = [];
+    });
   }
-  if (questionIdArr.value[0]) {
+
+  // 删除试题
+  if (questionIds && questionIds.length > 0) {
+    deleteLoading.value = true;
+    console.log('开始删除试题:', questionIds);
+
     axios.post('/api/questions/delete', '', {
-          params: {
-            id: questionIdArr.value.join(',')
-          }
-        }
-    ).then(res => {
+      params: {
+        id: questionIds.join(',')
+      }
+    }).then(res => {
       // 通过table索引移除
       if (res.data.code === 200) {
-        for (let i = 0; i < questionIdArr.value.length; i++) {
-          const dataIndex = tableData.value.findIndex(item => item.id === questionIdArr.value[i])
-          console.log(dataIndex)
+        for (let i = 0; i < questionIds.length; i++) {
+          const dataIndex = tableData.value.findIndex(item => item.id === questionIds[i])
+          console.log('找到试题索引:', dataIndex)
           // 过滤到相同id的文件夹，只删除题目
           if (dataIndex !== -1 && !tableData.value[dataIndex].name) {
             tableData.value.splice(dataIndex, 1)
@@ -442,7 +460,7 @@ const deleteEvent = () => {
           }
         }
         ElNotification({
-          title: '题目删除成功',
+          title: '试题删除成功',
           type: 'success'
         });
 
@@ -450,14 +468,102 @@ const deleteEvent = () => {
         // 这样可以避免前后端重复记录活动
       } else {
         ElNotification({
-          title: '题目删除失败',
+          title: '试题删除失败',
+          message: res.data.message || '服务器返回错误，请稍后重试',
           type: 'error'
-        })
+        });
       }
-      // 重置id列表
+    }).catch(error => {
+      console.error('删除试题请求失败:', error);
+      ElNotification({
+        title: '删除请求失败',
+        message: '网络错误或服务器异常，请稍后重试',
+        type: 'error'
+      });
+    }).finally(() => {
+      deleteLoading.value = false;
+      // 重置试题多选列表
       multipleSelection.value.questionList = [];
-    })
+    });
   }
+};
+
+// 单个项目删除处理函数
+const handleSingleDelete = (row) => {
+  // 判断是文件夹还是试题
+  const isFolder = !!row.name;
+  const itemName = isFolder ? row.name : (row.description ? (row.description.length > 20 ? row.description.substring(0, 20) + '...' : row.description) : '试题');
+  const itemType = isFolder ? '文件夹' : '试题';
+
+  ElMessageBox.confirm(`确定要删除${itemType}「${itemName}」吗？${isFolder ? '\n注意：删除文件夹不会删除文件夹中的试题。' : ''}`, '删除确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    if (isFolder) {
+      // 删除单个文件夹
+      performDelete([row.id], []);
+    } else {
+      // 删除单个试题
+      performDelete([], [row.id]);
+    }
+  }).catch(() => {
+    // 用户取消删除，不执行任何操作
+    ElNotification({
+      title: '已取消删除',
+      type: 'info'
+    });
+  });
+};
+
+// 批量删除事件处理函数
+const deleteEvent = () => {
+  // 使用数组而不是ref，避免不必要的响应式包装
+  const folderIdArr = multipleSelection.value.folderList.map(folder => folder.id);
+  const questionIdArr = multipleSelection.value.questionList.map(question => question.id);
+
+  // 如果没有选择任何项目，提示用户
+  if (folderIdArr.length === 0 && questionIdArr.length === 0) {
+    ElNotification({
+      title: '请先选择要删除的内容',
+      type: 'warning'
+    });
+    return;
+  }
+
+  // 构建确认信息
+  let confirmMessage = '确定要删除';
+  if (folderIdArr.length > 0) {
+    confirmMessage += ` ${folderIdArr.length} 个文件夹`;
+  }
+  if (folderIdArr.length > 0 && questionIdArr.length > 0) {
+    confirmMessage += '和';
+  }
+  if (questionIdArr.length > 0) {
+    confirmMessage += ` ${questionIdArr.length} 道试题`;
+  }
+  confirmMessage += '吗？';
+
+  // 添加文件夹内容提示
+  if (folderIdArr.length > 0) {
+    confirmMessage += '\n注意：删除文件夹不会删除文件夹中的试题。';
+  }
+
+  // 显示确认对话框
+  ElMessageBox.confirm(confirmMessage, '删除确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    // 执行删除操作
+    performDelete(folderIdArr, questionIdArr);
+  }).catch(() => {
+    // 用户取消删除，不执行任何操作
+    ElNotification({
+      title: '已取消删除',
+      type: 'info'
+    });
+  });
 } //批量删除逻辑
 const courseSelect = async (courseItem) => {
   // 点击转换到其他课程
@@ -1095,7 +1201,7 @@ creatEventListener();
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column fixed="right" min-width="180" label="操作">
+      <el-table-column fixed="right" min-width="220" label="操作">
         <template #default="{ row }">
           <div class="action-buttons">
             <el-button link type="primary" size="small" @click="handleClick(row)">
@@ -1111,6 +1217,10 @@ creatEventListener();
                       v-if="!row.hasChildren && row.description && row.inTest === true">
               <el-icon><Remove /></el-icon>
               <span>移出试卷</span>
+            </el-button>
+            <el-button link type="danger" size="small" @click="handleSingleDelete(row)">
+              <el-icon><Delete /></el-icon>
+              <span>删除</span>
             </el-button>
           </div>
         </template>
