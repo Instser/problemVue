@@ -120,6 +120,7 @@ const submitForm = async () => {
   formLoading.value = true;
   try {
     const url = form.value.id ? "/api/announcement/update" : "/api/announcement/add";
+    // 移除未使用的变量
     const res = await axios.post(url, form.value);
 
     console.log("提交表单响应:", res);
@@ -128,6 +129,9 @@ const submitForm = async () => {
     if (res.data && res.data.code === 200 && res.data.data > 0) {
       ElMessage.success(form.value.id ? "更新成功" : "添加成功");
       formVisible.value = false;
+
+      // 如果设置了置顶，直接刷新列表获取最新数据
+      // 后端会自动处理置顶逻辑，确保只有一个公告被置顶
       getList();
 
       // 通知其他页面刷新公告数据
@@ -192,6 +196,16 @@ const handleTopChange = (row) => {
   axios.get(`/api/announcement/updateTopStatus?id=${row.id}&isTop=${isTop}`).then(res => {
     if (res.data && res.data.code === 200 && res.data.data > 0) {
       ElMessage.success(`${isTop ? '置顶' : '取消置顶'}成功`);
+
+      // 如果是置顶操作，更新所有其他公告的置顶状态为false
+      if (isTop) {
+        tableData.value.forEach(item => {
+          if (item.id !== row.id) {
+            item.isTop = false;
+          }
+        });
+      }
+
       // 通知其他页面刷新公告数据
       localStorage.setItem('announcement_updated', Date.now().toString());
     } else {
