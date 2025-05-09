@@ -3,7 +3,7 @@ import {onMounted, onBeforeUnmount, ref} from "vue";
 import axios from "axios";
 import router from "@/router/router";
 import {storage} from "@/storage/storage";
-import {ElNotification} from "element-plus";
+import {ElNotification, ElMessageBox} from "element-plus";
 import {Plus, Edit, Delete, User, View, InfoFilled, Bottom, Select, School, Check} from "@element-plus/icons-vue";
 
 const tableData = ref([])
@@ -128,50 +128,72 @@ const handleScroll = () => {
 }
 
 const courseDelete = (row) => {
-  axios.get('/api/course/deleteCourse', {
-    params: {
-      id: row.id
-    }
-  }).then(res => {
-    if (res.data.code === 200) {
-      // 重置页码和状态
-      params.value.page = 1
-      hasMoreData.value = true
-
-      // 重新加载数据
-      getPage(true);
-
-      ElNotification({
-        title: '删除成功',
-        type: 'success'
-      });
-
-      // 记录用户活动
-      const userId = storage.get('userId');
-      console.log('删除课程时的用户ID:', userId); // 调试用
-      if (userId) {
-        axios.post('/api/userActivity/record', null, {
-          params: {
-            userId: userId,
-            type: '删除课程',
-            name: row.name || '课程',
-            objectId: row.id
-          }
-        }).then(res => {
-          console.log('记录活动成功:', res.data);
-        }).catch(error => {
-          console.error('记录活动失败:', error);
-        });
-      } else {
-        console.error('用户ID不存在，无法记录活动');
+  // 显示确认对话框
+  ElMessageBox.confirm(`确定要删除课程「${row.name}」吗？\n注意：删除课程后，相关的试题和文件夹将无法访问。`, '删除确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    // 用户确认删除，执行删除操作
+    axios.get('/api/course/deleteCourse', {
+      params: {
+        id: row.id
       }
-    } else {
+    }).then(res => {
+      if (res.data.code === 200) {
+        // 重置页码和状态
+        params.value.page = 1
+        hasMoreData.value = true
+
+        // 重新加载数据
+        getPage(true);
+
+        ElNotification({
+          title: '删除成功',
+          type: 'success'
+        });
+
+        // 记录用户活动
+        const userId = storage.get('userId');
+        console.log('删除课程时的用户ID:', userId); // 调试用
+        if (userId) {
+          axios.post('/api/userActivity/record', null, {
+            params: {
+              userId: userId,
+              type: '删除课程',
+              name: row.name || '课程',
+              objectId: row.id
+            }
+          }).then(res => {
+            console.log('记录活动成功:', res.data);
+          }).catch(error => {
+            console.error('记录活动失败:', error);
+          });
+        } else {
+          console.error('用户ID不存在，无法记录活动');
+        }
+      } else {
+        ElNotification({
+          title: '删除失败',
+          message: res.data.message || '服务器返回错误，请稍后重试',
+          type: 'error'
+        });
+      }
+    }).catch(error => {
+      console.error('删除课程请求失败:', error);
       ElNotification({
-        title: '删除失败',
+        title: '删除请求失败',
+        message: '网络错误或服务器异常，请稍后重试',
         type: 'error'
-      })
-    }
-  })
+      });
+    });
+  }).catch(() => {
+    // 用户取消删除，不执行任何操作
+    ElNotification({
+      title: '已取消删除',
+      type: 'info'
+    });
+  });
 }
 // 不再需要表格多选功能
 // const handleSelectionChange = (val) => {
