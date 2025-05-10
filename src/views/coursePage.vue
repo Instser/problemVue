@@ -341,9 +341,14 @@ const editTeacher = (row) => {
           const currentTeacherNames = row.teaNamesStr.split(',');
           teacherForm.value = currentTeacherNames;
 
-          // 根据教师名称找到对应的教师对象，并添加到已选教师列表中
+          // 根据教师昵称找到对应的教师对象，并添加到已选教师列表中
           currentTeacherNames.forEach(teacherName => {
-            const foundTeacher = allTeachers.value.find(t => t.username === teacherName);
+            // 先尝试通过昵称查找
+            let foundTeacher = allTeachers.value.find(t => t.nickname === teacherName);
+            // 如果通过昵称找不到，再尝试通过用户名查找（兼容旧数据）
+            if (!foundTeacher) {
+              foundTeacher = allTeachers.value.find(t => t.username === teacherName);
+            }
             if (foundTeacher) {
               selectedTeachers.value.push(foundTeacher);
             }
@@ -581,7 +586,7 @@ onBeforeUnmount(() => {
                   effect="light"
               >
                 <el-icon><User /></el-icon>
-                <span style="margin-left: 5px">{{ teacher.username }} ({{ teacher.nickname || '无昵称' }})</span>
+                <span style="margin-left: 5px">{{ teacher.nickname || '无昵称' }}</span>
               </el-tag>
             </template>
             <el-empty v-else description="暂无选择任课老师" :image-size="100"></el-empty>
@@ -632,7 +637,6 @@ onBeforeUnmount(() => {
                 <div class="teacher-info">
                   <el-icon class="teacher-icon"><User /></el-icon>
                   <div class="teacher-details">
-                    <div class="teacher-username">{{ teacher.username }}</div>
                     <div class="teacher-nickname">{{ teacher.nickname || '无昵称' }}</div>
                   </div>
                 </div>
@@ -1210,14 +1214,10 @@ onBeforeUnmount(() => {
               }
 
               .teacher-details {
-                .teacher-username {
+                .teacher-nickname {
                   font-weight: 500;
                   color: var(--text-primary);
-                }
-
-                .teacher-nickname {
-                  font-size: 12px;
-                  color: var(--text-secondary);
+                  font-size: 14px;
                 }
               }
             }
