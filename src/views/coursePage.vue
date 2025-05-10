@@ -4,7 +4,8 @@ import axios from "axios";
 import router from "@/router/router";
 import {storage} from "@/storage/storage";
 import {ElNotification, ElMessageBox} from "element-plus";
-import {Plus, Edit, Delete, User, View, InfoFilled, Bottom, Select, School, Check} from "@element-plus/icons-vue";
+// eslint-disable-next-line no-unused-vars
+import {Plus, Edit, Delete, User, View, InfoFilled, Bottom, Select, School, Check, Search} from "@element-plus/icons-vue";
 
 const tableData = ref([])
 const params = ref({
@@ -23,10 +24,13 @@ const dialogForm = ref({
   id: ''
 })
 const course1DialogVisible = ref(false)
-const teacherDialogVisible =ref(false)
+const teacherDialogVisible = ref(false)
 const teacherForm = ref([])
-const inputVisible =  ref(false)
-const inputValue = ref('')
+const allTeachers = ref([])
+const selectedTeachers = ref([])
+const teacherSearchKeyword = ref('')
+const selectedCollege = ref('')
+const collegeOptions = ref([])
 const currentEditCourseId = ref(null)
 const currentEditCourseName = ref('')
 
@@ -297,69 +301,167 @@ const primaryCourse = () => {
     }
   })
 }
-const editTeacher = (row) => {
-  if (row.teaNamesStr)
-    teacherForm.value = row.teaNamesStr.split(',')
 
-  // 保存当前编辑的课程ID
+
+const editTeacher = (row) => {
+  // 保存当前编辑的课程ID和名称
   currentEditCourseId.value = row.id;
   currentEditCourseName.value = row.name;
+
+  // 重置选中的教师列表
+  selectedTeachers.value = [];
+
+  // 获取教师列表，并在获取成功后处理已关联教师
+  axios.get('/api/user/getAllTeachers')
+    .then(res => {
+      if (res.data.code === 200) {
+        allTeachers.value = res.data.data || [];
+        console.log('获取到教师列表:', allTeachers.value);
+
+        // 提取所有不重复的学院选项
+        const colleges = new Set();
+        allTeachers.value.forEach(teacher => {
+          if (teacher.college) {
+            colleges.add(teacher.college);
+          }
+        });
+        collegeOptions.value = Array.from(colleges).map(college => ({
+          value: college,
+          label: college
+        }));
+
+        // 添加"全部"选项
+        collegeOptions.value.unshift({ value: '', label: '全部学院' });
+
+        // 重置学院筛选
+        selectedCollege.value = '';
+
+        // 如果课程已有关联教师，设置为已选中
+        if (row.teaNamesStr) {
+          const currentTeacherNames = row.teaNamesStr.split(',');
+          teacherForm.value = currentTeacherNames;
+
+          // 根据教师名称找到对应的教师对象，并添加到已选教师列表中
+          currentTeacherNames.forEach(teacherName => {
+            const foundTeacher = allTeachers.value.find(t => t.username === teacherName);
+            if (foundTeacher) {
+              selectedTeachers.value.push(foundTeacher);
+            }
+          });
+        } else {
+          teacherForm.value = [];
+        }
+      } else {
+        console.error('获取教师列表失败:', res.data);
+        ElNotification({
+          title: '获取教师列表失败',
+          message: res.data.message || '服务器返回错误',
+          type: 'error'
+        });
+      }
+    })
+    .catch(error => {
+      console.error('获取教师列表请求失败:', error);
+      ElNotification({
+        title: '获取教师列表失败',
+        message: '网络错误或服务器异常',
+        type: 'error'
+      });
+    });
 }
 
-const handleInputConfirm = () => {
-  if (inputValue.value) {
-    teacherForm.value.push(inputValue.value)
+// 根据关键词和学院过滤教师列表，并排除已选中的教师
+const filteredTeachers = () => {
+  // 首先过滤掉已选中的教师
+  let availableTeachers = allTeachers.value.filter(teacher =>
+    !selectedTeachers.value.some(selected => selected.id === teacher.id)
+  );
+
+  // 根据选择的学院进行过滤
+  if (selectedCollege.value) {
+    availableTeachers = availableTeachers.filter(teacher =>
+      teacher.college === selectedCollege.value
+    );
   }
-  inputVisible.value = false
-  inputValue.value = ''
+
+  // 然后根据关键词进行过滤
+  if (!teacherSearchKeyword.value) {
+    return availableTeachers;
+  }
+
+  return availableTeachers.filter(teacher =>
+    teacher.username.toLowerCase().includes(teacherSearchKeyword.value.toLowerCase()) ||
+    (teacher.nickname && teacher.nickname.toLowerCase().includes(teacherSearchKeyword.value.toLowerCase()))
+  );
 }
 
-const showInput = () => {
-  inputVisible.value = true
+// 选择教师
+const handleTeacherSelect = (teacher) => {
+  // 由于filteredTeachers已经过滤掉了已选中的教师，这里可以直接添加
+  selectedTeachers.value.push(teacher);
 }
 
+// 移除已选教师
 const removeTeacher = (teacher) => {
-  teacherForm.value = teacherForm.value.filter(item => item !== teacher);
+  selectedTeachers.value = selectedTeachers.value.filter(t => t.id !== teacher.id);
 }
 
 const saveTeachers = () => {
-  // 这里应该调用后端API保存老师信息
-  // 由于后端API可能尚未实现，这里先模拟保存成功
+  // 获取选中教师的ID列表
+  const teacherIds = selectedTeachers.value.map(teacher => teacher.id);
 
-  // 关闭对话框
-  teacherDialogVisible.value = false;
+  // 调用后端API保存教师关联
+  axios.post('/api/teaCour/updateCourseTeachers', {
+    courseId: currentEditCourseId.value,
+    teacherIds: teacherIds
+  }).then(res => {
+    if (res.data.code === 200) {
+      // 关闭对话框
+      teacherDialogVisible.value = false;
 
-  ElNotification({
-    title: '任课老师修改成功',
-    type: 'success'
-  });
+      ElNotification({
+        title: '任课老师修改成功',
+        type: 'success'
+      });
 
-  // 记录用户活动
-  const userId = storage.get('userId');
-  console.log('修改任课老师时的用户ID:', userId); // 调试用
-  if (userId) {
-    axios.post('/api/userActivity/record', null, {
-      params: {
-        userId: userId,
-        type: '修改任课老师',
-        name: currentEditCourseName.value || '课程',
-        objectId: currentEditCourseId.value
+      // 记录用户活动
+      const userId = storage.get('userId');
+      if (userId) {
+        axios.post('/api/userActivity/record', null, {
+          params: {
+            userId: userId,
+            type: '修改任课老师',
+            name: currentEditCourseName.value || '课程',
+            objectId: currentEditCourseId.value
+          }
+        }).then(res => {
+          console.log('记录活动成功:', res.data);
+        }).catch(error => {
+          console.error('记录活动失败:', error);
+        });
       }
-    }).then(res => {
-      console.log('记录活动成功:', res.data);
-    }).catch(error => {
-      console.error('记录活动失败:', error);
+
+      // 重置页码和状态
+      params.value.page = 1;
+      hasMoreData.value = true;
+
+      // 重新加载数据
+      getPage(true);
+    } else {
+      ElNotification({
+        title: '修改任课老师失败',
+        message: res.data.message || '服务器返回错误',
+        type: 'error'
+      });
+    }
+  }).catch(error => {
+    console.error('修改任课老师请求失败:', error);
+    ElNotification({
+      title: '修改任课老师失败',
+      message: '网络错误或服务器异常',
+      type: 'error'
     });
-  } else {
-    console.error('用户ID不存在，无法记录活动');
-  }
-
-  // 重置页码和状态
-  params.value.page = 1
-  hasMoreData.value = true
-
-  // 重新加载数据
-  getPage(true);
+  });
 }
 // 设置事件监听器
 const setupEventListeners = () => {
@@ -455,60 +557,88 @@ onBeforeUnmount(() => {
     </el-dialog>
     <el-dialog v-model="teacherDialogVisible"
                title="管理任课老师"
-               width="550"
+               width="650"
                align-center
                :close-on-click-modal="false"
                class="custom-dialog"
-               @closed="() =>  teacherForm = []">
+               @closed="() => { teacherForm = []; selectedTeachers = []; teacherSearchKeyword = ''; }">
       <div class="teacher-manager">
         <div class="teacher-list">
           <div class="section-title">
             <el-icon class="icon current-icon"><User /></el-icon>
-            <span>当前任课老师</span>
+            <span>已选教师</span>
           </div>
           <div class="teacher-tags">
-            <template v-if="teacherForm.length > 0">
+            <template v-if="selectedTeachers.length > 0">
               <el-tag
-                  v-for="(item, index) in teacherForm"
-                  :key="index"
+                  v-for="teacher in selectedTeachers"
+                  :key="teacher.id"
                   closable
                   :disable-transitions="false"
-                  @close="removeTeacher(item)"
+                  @close="removeTeacher(teacher)"
                   class="teacher-tag"
                   type="success"
                   effect="light"
               >
                 <el-icon><User /></el-icon>
-                <span style="margin-left: 5px">{{ item }}</span>
+                <span style="margin-left: 5px">{{ teacher.username }} ({{ teacher.nickname || '无昵称' }})</span>
               </el-tag>
             </template>
-            <el-empty v-else description="暂无任课老师" :image-size="100"></el-empty>
+            <el-empty v-else description="暂无选择任课老师" :image-size="100"></el-empty>
           </div>
         </div>
 
         <div class="add-teacher">
           <div class="section-title">
             <el-icon class="icon add-icon"><Plus /></el-icon>
-            <span>添加新老师</span>
+            <span>添加教师</span>
           </div>
-          <div class="input-container">
-            <el-input
-                v-if="inputVisible"
-                v-model="inputValue"
-                class="teacher-input"
-                placeholder="输入老师名称后回车确认"
-                @keyup.enter="handleInputConfirm"
-                @blur="handleInputConfirm"
-                prefix-icon="User"
-            >
-              <template #append>
-                <el-button @click="handleInputConfirm">添加</el-button>
-              </template>
-            </el-input>
-            <el-button v-else type="primary" @click="showInput" class="add-button">
-              <el-icon><Plus /></el-icon>
-              <span>添加老师</span>
-            </el-button>
+
+          <div class="search-container">
+            <div class="search-row">
+              <el-input
+                v-model="teacherSearchKeyword"
+                placeholder="搜索教师（账号或昵称）"
+                clearable
+                class="search-input"
+                prefix-icon="Search"
+              />
+              <el-select
+                v-model="selectedCollege"
+                placeholder="选择学院"
+                clearable
+                class="college-select"
+              >
+                <el-option
+                  v-for="item in collegeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </div>
+          </div>
+
+          <div class="teachers-list-container">
+            <div class="section-subtitle">可选教师列表</div>
+            <div class="teachers-grid">
+              <el-card
+                v-for="teacher in filteredTeachers()"
+                :key="teacher.id"
+                class="teacher-card"
+                shadow="hover"
+                @click="handleTeacherSelect(teacher)"
+              >
+                <div class="teacher-info">
+                  <el-icon class="teacher-icon"><User /></el-icon>
+                  <div class="teacher-details">
+                    <div class="teacher-username">{{ teacher.username }}</div>
+                    <div class="teacher-nickname">{{ teacher.nickname || '无昵称' }}</div>
+                  </div>
+                </div>
+              </el-card>
+              <el-empty v-if="filteredTeachers().length === 0" description="未找到匹配的教师" :image-size="80"></el-empty>
+            </div>
           </div>
         </div>
       </div>
@@ -588,9 +718,6 @@ onBeforeUnmount(() => {
                 <el-button circle @click="editCourse(course);course1DialogVisible = true" type="primary" size="small">
                   <el-icon><Edit /></el-icon>
                 </el-button>
-                <el-button circle @click="editTeacher(course);teacherDialogVisible = true" type="success" size="small">
-                  <el-icon><User /></el-icon>
-                </el-button>
                 <el-button circle @click="courseDelete(course)" type="danger" size="small">
                   <el-icon><Delete /></el-icon>
                 </el-button>
@@ -629,9 +756,9 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="course-actions">
-              <el-button type="primary" @click="() => {router.push('/home')}">
-                <el-icon><View /></el-icon>
-                <span>查看课程</span>
+              <el-button type="primary" @click="editTeacher(course);teacherDialogVisible = true">
+                <el-icon><User /></el-icon>
+                <span>关联教师</span>
               </el-button>
             </div>
           </div>
@@ -1012,6 +1139,13 @@ onBeforeUnmount(() => {
       }
     }
 
+    .section-subtitle {
+      font-size: 14px;
+      font-weight: 500;
+      margin: 12px 0 8px;
+      color: var(--text-secondary);
+    }
+
     .teacher-list {
       margin-bottom: 24px;
 
@@ -1027,20 +1161,67 @@ onBeforeUnmount(() => {
     }
 
     .add-teacher {
-      .input-container {
-        display: flex;
+      .search-container {
+        margin-bottom: 16px;
 
-        .teacher-input {
-          width: 100%;
-        }
-
-        .add-button {
-          width: 100%;
+        .search-row {
           display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 5px;
-          height: 40px;
+          gap: 10px;
+
+          .search-input {
+            flex: 1;
+          }
+
+          .college-select {
+            width: 150px;
+          }
+        }
+      }
+
+      .teachers-list-container {
+        .teachers-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 12px;
+          max-height: 300px;
+          overflow-y: auto;
+          padding: 8px;
+          background-color: var(--background-color);
+          border-radius: 8px;
+
+          .teacher-card {
+            cursor: pointer;
+            transition: all 0.2s;
+
+            &:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+              border-color: var(--primary-color);
+            }
+
+            .teacher-info {
+              display: flex;
+              align-items: center;
+
+              .teacher-icon {
+                font-size: 20px;
+                color: var(--primary-color);
+                margin-right: 10px;
+              }
+
+              .teacher-details {
+                .teacher-username {
+                  font-weight: 500;
+                  color: var(--text-primary);
+                }
+
+                .teacher-nickname {
+                  font-size: 12px;
+                  color: var(--text-secondary);
+                }
+              }
+            }
+          }
         }
       }
     }
