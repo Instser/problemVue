@@ -1,21 +1,21 @@
 // 数学公式帮助内容
 export const mathHelpContent = `
-<div style="max-height: 400px; overflow-y: auto; padding: 10px;">
+<div style="max-height: 400px; overflow-y: auto; padding: 10px; width: 100%;">
   <h3 style="margin-top: 0;">常用数学公式输入方法</h3>
   <p>在数学公式编辑框中输入LaTeX格式的公式，使用以下语法：</p>
 
   <h4>基础运算</h4>
-  <table style="width: 100%; border-collapse: collapse;">
+  <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
     <tr>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">语法</th>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">说明</th>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">效果</th>
-      <th style="text-align: center; padding: 5px; border-bottom: 1px solid #ddd;">操作</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 30%;">语法</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 15%;">说明</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 40%;">效果</th>
+      <th style="text-align: center; padding: 5px; border-bottom: 1px solid #ddd; width: 15%;">操作</th>
     </tr>
     <tr>
       <td style="padding: 5px; border-bottom: 1px solid #eee;"><code>a + b</code></td>
       <td style="padding: 5px; border-bottom: 1px solid #eee;">加法</td>
-      <td style="padding: 5px; border-bottom: 1px solid #eee;" class="formula-display">$$a + b$$</td>
+      <td style="padding: 10px 5px; border-bottom: 1px solid #eee;" class="formula-display">$$a + b$$</td>
       <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;"><button class="use-formula-btn" data-formula="a + b">使用</button></td>
     </tr>
     <tr>
@@ -69,12 +69,12 @@ export const mathHelpContent = `
   </table>
 
   <h4 style="margin-top: 15px;">高级符号</h4>
-  <table style="width: 100%; border-collapse: collapse;">
+  <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
     <tr>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">语法</th>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">说明</th>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">效果</th>
-      <th style="text-align: center; padding: 5px; border-bottom: 1px solid #ddd;">操作</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 30%;">语法</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 15%;">说明</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 40%;">效果</th>
+      <th style="text-align: center; padding: 5px; border-bottom: 1px solid #ddd; width: 15%;">操作</th>
     </tr>
     <tr>
       <td style="padding: 5px; border-bottom: 1px solid #eee;"><code>\\sum_{i=1}^{n} i</code></td>
@@ -121,11 +121,11 @@ export const mathHelpContent = `
   </table>
 
   <h4 style="margin-top: 15px;">矩阵</h4>
-  <table style="width: 100%; border-collapse: collapse;">
+  <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
     <tr>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">语法</th>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">效果</th>
-      <th style="text-align: center; padding: 5px; border-bottom: 1px solid #ddd;">操作</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 40%;">语法</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 45%;">效果</th>
+      <th style="text-align: center; padding: 5px; border-bottom: 1px solid #ddd; width: 15%;">操作</th>
     </tr>
     <tr>
       <td style="padding: 5px; vertical-align: top;">
@@ -158,12 +158,12 @@ c & d
   </table>
 
   <h4 style="margin-top: 15px;">常用公式示例</h4>
-  <table style="width: 100%; border-collapse: collapse;">
+  <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
     <tr>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">说明</th>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">语法</th>
-      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">效果</th>
-      <th style="text-align: center; padding: 5px; border-bottom: 1px solid #ddd;">操作</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 10%;">说明</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 30%;">语法</th>
+      <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd; width: 50%;">效果</th>
+      <th style="text-align: center; padding: 5px; border-bottom: 1px solid #ddd; width: 10%;">操作</th>
     </tr>
     <tr>
       <td style="padding: 5px; border-bottom: 1px solid #eee;">二次方程</td>
@@ -174,43 +174,90 @@ c & d
     <tr>
       <td style="padding: 5px; border-bottom: 1px solid #eee;">二次方程解</td>
       <td style="padding: 5px; border-bottom: 1px solid #eee;"><code>x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}</code></td>
-      <td style="padding: 5px; border-bottom: 1px solid #eee;" class="formula-display">$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$</td>
+      <td style="padding: 15px 5px; border-bottom: 1px solid #eee; height: 60px;" class="formula-display taylor-formula">$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$</td>
       <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;"><button class="use-formula-btn" data-formula="x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}">使用</button></td>
     </tr>
     <tr>
       <td style="padding: 5px; border-bottom: 1px solid #eee;">积分公式</td>
       <td style="padding: 5px; border-bottom: 1px solid #eee;"><code>\\int_{a}^{b} x^2 dx = \\left[ \\frac{x^3}{3} \\right]_{a}^{b}</code></td>
-      <td style="padding: 5px; border-bottom: 1px solid #eee;" class="formula-display">$$\\int_{a}^{b} x^2 dx = \\left[ \\frac{x^3}{3} \\right]_{a}^{b}$$</td>
+      <td style="padding: 15px 5px; border-bottom: 1px solid #eee; height: 60px;" class="formula-display taylor-formula">$$\\int_{a}^{b} x^2 dx = \\left[ \\frac{x^3}{3} \\right]_{a}^{b}$$</td>
       <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;"><button class="use-formula-btn" data-formula="\\int_{a}^{b} x^2 dx = \\left[ \\frac{x^3}{3} \\right]_{a}^{b}">使用</button></td>
     </tr>
     <tr>
       <td style="padding: 5px; border-bottom: 1px solid #eee;">泰勒展开</td>
       <td style="padding: 5px; border-bottom: 1px solid #eee;"><code>f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!} (x-a)^n</code></td>
-      <td style="padding: 5px; border-bottom: 1px solid #eee;" class="formula-display">$$f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!} (x-a)^n$$</td>
+      <td style="padding: 15px 5px; border-bottom: 1px solid #eee; height: 60px;" class="formula-display taylor-formula">$$f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!} (x-a)^n$$</td>
       <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;"><button class="use-formula-btn" data-formula="f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!} (x-a)^n">使用</button></td>
     </tr>
   </table>
 
   <style>
     .formula-display {
-      min-height: 30px;
+      min-height: 40px;
+      max-width: 100%;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
     }
     .formula-display mjx-container {
       display: inline-block !important;
       margin: 0 !important;
+      max-width: 100%;
+      pointer-events: none;
+      z-index: 1;
     }
     .use-formula-btn {
-      padding: 2px 8px;
+      padding: 4px 10px;
       background-color: #1890ff;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 14px;
       transition: background-color 0.3s;
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
     .use-formula-btn:hover {
       background-color: #40a9ff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    td, th {
+      word-break: break-word;
+      overflow-wrap: break-word;
+      vertical-align: top;
+      position: relative;
+      min-height: 40px;
+      height: 40px;
+    }
+    td:last-child {
+      vertical-align: middle;
+    }
+    td.formula-display {
+      height: 50px;
+      padding-top: 10px !important;
+      padding-bottom: 10px !important;
+    }
+    .taylor-formula {
+      height: 70px !important;
+      padding-top: 15px !important;
+      padding-bottom: 15px !important;
+    }
+    .taylor-formula mjx-container {
+      transform: scale(0.95);
+      transform-origin: left center;
+    }
+    code {
+      word-break: break-all;
+      white-space: normal;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-x: hidden;
     }
   </style>
 

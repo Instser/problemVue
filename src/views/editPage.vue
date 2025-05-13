@@ -5,14 +5,14 @@ import Editor from '@tinymce/tinymce-vue'
 // 注册数学公式按钮和帮助按钮
 tinymce.PluginManager.add('mathformula', function(editor) {
   // 添加一个命令，用于打开数学公式对话框
-  editor.addCommand('openMathFormulaDialog', function(ui, value) {
+  editor.addCommand('openMathFormulaDialog', function(/* eslint-disable-next-line no-unused-vars */ ui, value) {
     // 创建预览区域
     const previewContainer = document.createElement('div');
     previewContainer.className = 'formula-preview-container';
     previewContainer.style.cssText = 'margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; min-height: 40px; background-color: #f9f9f9;';
 
     // 打开对话框
-    const dialog = editor.windowManager.open({
+    editor.windowManager.open({
       title: '插入数学公式',
       body: {
         type: 'panel',
@@ -215,7 +215,7 @@ tinymce.PluginManager.add('mathformula', function(editor) {
             text: '关闭'
           }
         ],
-        width: 700,
+        width: 1000,
         height: 600,
         onSubmit: function(api) {
           api.close();
