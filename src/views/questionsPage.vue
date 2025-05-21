@@ -860,12 +860,28 @@ const createTest = async () => {
           list: list
         }))).then(res => {
           if (res.data.code === 200) {
-            ElNotification({
-              title: '试卷组建成功，点击"下载试卷"按钮下载',
-              type: 'success'
-            });
             // 保存生成的试卷数据，但不自动下载
             generatedPaperData.value = res.data.data
+
+            // 检查进度条是否已经完成
+            if (progressPercent.value >= 100) {
+              // 如果进度条已完成，立即显示通知
+              ElNotification({
+                title: '试卷组建成功，点击"下载试卷"按钮下载',
+                type: 'success'
+              });
+            } else {
+              // 如果进度条未完成，计算剩余时间并设置延迟通知
+              const elapsed = Date.now() - startTime
+              const remainingTime = Math.max(0, 8000 - elapsed)
+
+              setTimeout(() => {
+                ElNotification({
+                  title: '试卷组建成功，点击"下载试卷"按钮下载',
+                  type: 'success'
+                });
+              }, remainingTime + 100) // 额外添加100ms确保动画完全结束
+            }
           } else {
             ElNotification({
               title: '试卷组建失败',
@@ -948,11 +964,6 @@ const createQuickTest = async () => {
         const res = await axios.post('/api/questions/quickBuildTest', params)
 
         if (res.data.code === 200) {
-          ElNotification({
-            title: '试卷组建成功，点击"下载试卷"按钮下载',
-            type: 'success'
-          });
-
           // 保存生成的试卷数据，但不自动下载
           generatedPaperData.value = res.data.data
 
@@ -968,6 +979,26 @@ const createQuickTest = async () => {
                 addTest(foundQuestion)
               }
             })
+          }
+
+          // 检查进度条是否已经完成
+          if (progressPercent.value >= 100) {
+            // 如果进度条已完成，立即显示通知
+            ElNotification({
+              title: '试卷组建成功，点击"下载试卷"按钮下载',
+              type: 'success'
+            });
+          } else {
+            // 如果进度条未完成，计算剩余时间并设置延迟通知
+            const elapsed = Date.now() - startTime
+            const remainingTime = Math.max(0, 8000 - elapsed)
+
+            setTimeout(() => {
+              ElNotification({
+                title: '试卷组建成功，点击"下载试卷"按钮下载',
+                type: 'success'
+              });
+            }, remainingTime + 100) // 额外添加100ms确保动画完全结束
           }
         } else {
           ElNotification({

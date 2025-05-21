@@ -1,10 +1,7 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from "vue";
 import { storage } from "@/storage/storage";
 import axios from 'axios';
-
-const router = useRouter();
 const username = ref(storage.get('username') || '用户');
 const welcomeTime = ref('');
 const statistics = ref({
@@ -17,20 +14,7 @@ const statistics = ref({
 // 公告数据
 const announcements = ref([]);
 
-const quickLinks = [
-  { name: '试题管理', icon: 'Document', path: '/questions', color: '#409EFF' },
-  { name: '个人中心', icon: 'User', path: '/central', color: '#67C23A' },
-  { name: '创建试题', icon: 'Edit', path: '/edit', color: '#E6A23C' },
-  { name: '课程管理', icon: 'Reading', path: '/course', color: '#F56C6C', admin: true }
-];
 
-const filteredQuickLinks = computed(() => {
-  if (storage.get('role') === 'admin') {
-    return quickLinks;
-  } else {
-    return quickLinks.filter(link => !link.admin);
-  }
-});
 
 const getWelcomeTime = () => {
   const hour = new Date().getHours();
@@ -221,20 +205,6 @@ onMounted(() => {
       </el-row>
     </div>
 
-    <!-- 快捷操作 -->
-    <div class="quick-links-section">
-      <h2 class="section-title">快捷操作</h2>
-      <el-row :gutter="20">
-        <el-col :span="6" v-for="(link, index) in filteredQuickLinks" :key="index">
-          <div class="quick-link-card" @click="router.push(link.path)" :style="{ borderColor: link.color }">
-            <el-icon class="quick-link-icon" :color="link.color">
-              <component :is="link.icon"></component>
-            </el-icon>
-            <div class="quick-link-name">{{ link.name }}</div>
-          </div>
-        </el-col>
-      </el-row>
-    </div>
 
 
   </div>
@@ -343,38 +313,7 @@ onMounted(() => {
   }
 }
 
-.quick-links-section {
-  margin-bottom: 30px;
 
-  .quick-link-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 120px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: var(--box-shadow);
-    cursor: pointer;
-    transition: all 0.3s;
-    border-top: 3px solid transparent;
-
-    &:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-    }
-
-    .quick-link-icon {
-      font-size: 36px;
-      margin-bottom: 10px;
-    }
-
-    .quick-link-name {
-      font-size: 16px;
-      color: var(--text-primary);
-    }
-  }
-}
 
 .announcement-section {
   margin-bottom: 30px;

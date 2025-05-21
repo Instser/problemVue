@@ -64,14 +64,7 @@ onMounted(() => {
       </el-menu>
     </el-scrollbar>
 
-    <div class="sidebar-footer">
-      <el-tooltip content="帮助文档" placement="right" :disabled="!isCollapse">
-        <el-button class="footer-item" text>
-          <el-icon><QuestionFilled /></el-icon>
-          <span v-if="!isCollapse">帮助文档</span>
-        </el-button>
-      </el-tooltip>
-    </div>
+
   </div>
 </template>
 
@@ -162,26 +155,6 @@ onMounted(() => {
     }
   }
 
-  .sidebar-footer {
-    padding: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
 
-    .footer-item {
-      width: 100%;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      padding: 8px 16px;
-      transition: all 0.3s;
-
-      .el-icon {
-        margin-right: 8px;
-      }
-
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-      }
-    }
-  }
 }
 </style>

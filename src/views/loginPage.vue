@@ -3,7 +3,7 @@
     <div class="login-box">
       <div class="login-left">
         <div class="login-title">
-          <h1>试题管理系统</h1>
+          <h1>计算机辅助考试组卷系统</h1>
           <p>一站式试题管理解决方案</p>
         </div>
       </div>
