@@ -16,4 +16,34 @@
   </body>
 <script src="/tinymce/tinymce.min.js"></script>
 <script src="/tinymce/langs/zh_CN.js"></script>
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true,
+      processEnvironments: true
+    },
+    svg: {
+      fontCache: 'global'
+    },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+      ignoreHtmlClass: 'tex2jax_ignore',
+      processHtmlClass: 'math-tex'
+    },
+    startup: {
+      ready: function() {
+        MathJax.startup.defaultReady();
+        // 在页面加载完成后，手动触发一次渲染
+        document.addEventListener('DOMContentLoaded', function() {
+          setTimeout(function() {
+            MathJax.typeset();
+          }, 500);
+        });
+      }
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </html>
